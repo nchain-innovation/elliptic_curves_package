@@ -1,4 +1,4 @@
-from .parameters import u
+from elliptic_curves.instantiations.mnt4_753.parameters import u
 
 # Final exponentiation --------------------------------------------------------------------------------------------------------
 

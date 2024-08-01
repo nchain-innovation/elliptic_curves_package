@@ -1,6 +1,3 @@
-import os, sys
-sys.path.append(os.path.normpath(os.path.join(os.path.dirname(__file__),'.')))
-
 from copy import deepcopy
 
 # The two classes below are not meant to be directly used by the user. They should be exported using the function below.

@@ -1,4 +1,4 @@
-from .parameters import u
+from elliptic_curves.instantiations.bls12_381.parameters import u
 
 # Final exponentiation --------------------------------------------------------------------------------------------------------
 

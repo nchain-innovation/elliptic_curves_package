@@ -1,15 +1,12 @@
-import os, sys
-sys.path.append(os.path.normpath(os.path.join(os.path.dirname(__file__),'../../')))
+from elliptic_curves.fields.fq import base_field_from_modulus
+from elliptic_curves.fields.quadratic_extension import quadratic_extension_from_base_field_and_non_residue
 
-from fields.fq import base_field_from_modulus
-from fields.quadratic_extension import quadratic_extension_from_base_field_and_non_residue
+from elliptic_curves.models.ec import elliptic_curve_from_curve
+from elliptic_curves.models.curve import Curve, BilinearPairingCurve
+from elliptic_curves.models.bilinear_pairings import BilinearPairing
 
-from models.ec import elliptic_curve_from_curve
-from models.curve import Curve, BilinearPairingCurve
-from models.bilinear_pairings import BilinearPairing
-
-from instantiations.mnt4_753.parameters import *
-from instantiations.mnt4_753.final_exponentiation import easy_exponentiation, hard_exponentiation
+from elliptic_curves.instantiations.mnt4_753.parameters import *
+from elliptic_curves.instantiations.mnt4_753.final_exponentiation import easy_exponentiation, hard_exponentiation
 
 # Field instantiation
 Fq = base_field_from_modulus(q=q)
@@ -24,6 +21,9 @@ def mul_by_line_eval(self,line_eval):
     return self * line_eval
 
 Fq4.mul_by_line_eval = mul_by_line_eval
+
+# Scalar field of the curve
+Fr = base_field_from_modulus(q=r)
 
 # Curves
 mnt4_753_curve = Curve(a = Fq(a), b = Fq(b))
