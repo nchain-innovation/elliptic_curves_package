@@ -217,6 +217,16 @@ class EllipticCurve:
         
         return EllipticCurve(x=x,y=y)
 
+    def to_list(self) -> list[int]:
+        """
+        Returns the list of coordinates defining self. First the x-coordinate, then the y-coordinate
+        """
+        out = []
+        out.extend(self.x.to_list())
+        out.extend(self.y.to_list())
+        
+        return out
+
 class EllipticCurveProjective:
     CURVE = None
 
@@ -317,6 +327,17 @@ class EllipticCurveProjective:
     def to_affine(self):
         if not self.z.is_zero():
             return EllipticCurve(x=self.x * self.z.invert(),y=self.y * self.z.invert())
+
+    def to_list(self) -> list[int]:
+        """
+        Returns the list of coordinates defining self. First the x-coordinate, then the y-coordinate, then the z-coordinate
+        """
+        out = []
+        out.extend(self.x.to_list())
+        out.extend(self.y.to_list())
+        out.extend(self.z.to_list())
+        
+        return out
 
 def elliptic_curve_from_curve(curve):
     """
