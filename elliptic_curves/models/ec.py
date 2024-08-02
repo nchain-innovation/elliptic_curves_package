@@ -179,6 +179,43 @@ class EllipticCurve:
             out = P.y * Field.identity() - self.y * Field.identity() - lam * (P.x  * Field.identity()  - self.x  * Field.identity())
 
         return out
+    
+    def deserialise(serialised: list[bytes], field):
+        """
+        Function that a list of integers and inteprets it as a point on the elliptic curve self and returns its serialisation.
+        This function is based on the deserialisation function for the trait SWCurveConfig of arkworks, only uncompressed mode. [ref]
+        
+        It works as follows: serialised is a list of ints representing the little-endian encoding of (x,y). The encoding is:
+            [LE(x), LE(y)_mod]
+        where both elements are of length equal to the byte length of the field over which the curve is defined, and
+            LE(y)_mod[:n-1] = LE(y), LE(y)_mod[-1] = LE(y)[-1] | flags
+        where flags is the OR of:
+            1 << 7 if y > -y (lexicographic order)
+            1 << 6 if Point at infinity
+        """
+        is_infinity = (serialised[-1] >> 6) & 1
+        is_largest = (serialised[-1] >> 7) & 1
+        
+        if is_infinity:
+                return EllipticCurve.point_at_infinity()
+            
+        else:        
+            serialised_x = serialised[:len(serialised)//2]
+            x = field.deserialise(serialised_x)
+            serialised_y = serialised[len(serialised)//2:]
+            serialised_y[-1] = serialised_y[-1]  & ~(1 << 7)
+            y = field.deserialise(serialised_y)
+
+            y_is_largest = False
+            for el, minus_el in zip(y.to_list()[::-1],(-y).to_list()[::-1]):
+                if el > minus_el:
+                    y_is_largest = True
+                    break
+            
+            if (y_is_largest and not is_largest) or (not y_is_largest and is_largest):
+                y = -y
+        
+        return EllipticCurve(x=x,y=y)
 
 class EllipticCurveProjective:
     CURVE = None
@@ -306,6 +343,34 @@ def elliptic_curve_from_curve(curve):
                     y=deepcopy(self.y),
                     z=Field.identity()
                     )
+        
+        def deserialise(serialised: list[bytes], field):
+            """
+            See comments for function above
+            """
+            is_infinity = (serialised[-1] >> 6) & 1
+            is_largest = (serialised[-1] >> 7) & 1
+            
+            if is_infinity:
+                    return AffineEllipticCurve.point_at_infinity()
+                
+            else:        
+                serialised_x = serialised[:len(serialised)//2]
+                x = field.deserialise(serialised_x)
+                serialised_y = serialised[len(serialised)//2:]
+                serialised_y[-1] = serialised_y[-1]  & ~(1 << 7)
+                y = field.deserialise(serialised_y)
+
+                y_is_largest = False
+                for el, minus_el in zip(y.to_list()[::-1],(-y).to_list()[::-1]):
+                    if el > minus_el:
+                        y_is_largest = True
+                        break
+                
+                if (y_is_largest and not is_largest) or (not y_is_largest and is_largest):
+                    y = -y
+            
+            return AffineEllipticCurve(x=x,y=y)
 
     class ProjectiveEllipticCurve(EllipticCurveProjective):
         CURVE = curve
