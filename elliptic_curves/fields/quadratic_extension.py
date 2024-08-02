@@ -1,4 +1,5 @@
 from copy import deepcopy
+from math import gcd
 
 # The following class is not meant to be used by the user. It should be re-exported using the function below
 class QuadraticExtension:
@@ -41,6 +42,10 @@ class QuadraticExtension:
         Field = type(x)
         Field_Y = type(y)
 
+        # Field_Y is not the base fields, and neither field can be an extension of the other
+        if gcd(Field.EXTENSION_DEGREE,Field_Y.EXTENSION_DEGREE) == 1 and Field_Y.EXTENSION_DEGREE != 1:
+            raise ValueError('Multiplication not implemented')
+
         if Field_Y == Field: # Same type
             return Field(x.x0 * y.x0 + x.x1 * y.x1 * Field.NON_RESIDUE, x.x0 * y.x1 + x.x1 * y.x0)
         else:
@@ -50,12 +55,20 @@ class QuadraticExtension:
             if Field.EXTENSION_DEGREE < Field_Y.EXTENSION_DEGREE:
                 a, b = b, a
                 Field, Field_Y = Field_Y, Field
-            # Try the quadratic extension case
-            try:
-                return Field(a.x0 * b, a.x1 * b)
-            # Otherwise, raise exception
-            except:
-                raise ValueError('Multiplication not implemented')
+            if Field.EXTENSION_DEGREE_OVER_BASE_FIELD == 2:
+                try:
+                    return Field(a.x0 * b, a.x1 * b)
+                # Otherwise, raise exception
+                except:
+                    raise ValueError('Multiplication not implemented')
+            elif Field.EXTENSION_DEGREE_OVER_BASE_FIELD == 3:
+                try:
+                    return Field(a.x0 * b, a.x1 * b, a.x2 * b)
+                # Otherwise, raise exception
+                except:
+                    raise ValueError('Multiplication not implemented')
+            else:
+                    raise ValueError('Multiplication not implemented')
             
     def __repr__(self):
         return f'({self.x0},{self.x1})'
