@@ -3,7 +3,6 @@ from elliptic_curves.fields.quadratic_extension import quadratic_extension_from_
 
 from elliptic_curves.models.ec import elliptic_curve_from_curve
 from elliptic_curves.models.curve import Curve, BilinearPairingCurve
-from elliptic_curves.models.bilinear_pairings import BilinearPairing
 
 from elliptic_curves.instantiations.mnt4_753.parameters import *
 from elliptic_curves.instantiations.mnt4_753.final_exponentiation import easy_exponentiation, hard_exponentiation
@@ -61,18 +60,15 @@ MNT4_753_Twist.to_base_curve = to_base_curve
 mnt4_753 = BilinearPairingCurve(
     q = q,
     r = r,
+    t_minus_one=u,
+    exp_t_minus_one=exp_t_minus_one,
     h1 = h1,
     h2 = h2,
     curve = mnt4_753_curve,
     twisted_curve = mnt4_753_twisted_curve,
     g1 = MNT4_753(x = Fq(g1_X), y = Fq(g1_Y)),
     g2 = MNT4_753_Twist(x = Fq2(Fq(g2_X0),Fq(g2_X1)), y = Fq2(Fq(g2_Y0),Fq(g2_Y1))),
-    exp_t_minus_one=exp_t_minus_one
-)
-
-mnt4_753_bilinear_pairing = BilinearPairing(
-    bilinear_pairing_curve = mnt4_753,
-    miller_output_type = Fq4,
-    easy_exponentiation = easy_exponentiation,
-    hard_exponentation = hard_exponentiation
+    miller_output_type=Fq4,
+    easy_exponentiation=easy_exponentiation,
+    hard_exponentiation=hard_exponentiation
 )

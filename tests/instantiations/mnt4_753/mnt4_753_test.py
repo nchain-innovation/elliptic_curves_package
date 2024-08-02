@@ -1,5 +1,4 @@
-from elliptic_curves.fields.fq import base_field_from_modulus
-from elliptic_curves.instantiations.mnt4_753.mnt4_753 import Fq4, mnt4_753, mnt4_753_bilinear_pairing, Fr
+from elliptic_curves.instantiations.mnt4_753.mnt4_753 import Fq4, mnt4_753, Fr
 
 g1 = mnt4_753.g1
 g2 = mnt4_753.g2
@@ -8,9 +7,9 @@ pairing_g1_g2_serialised = [180, 141, 84, 186, 49, 46, 169, 53, 16, 153, 219, 27
 pairing_g1_g2 = Fq4.deserialise(pairing_g1_g2_serialised)
 
 def test_pairing() -> bool:
-    miller_output_twisted_curve = mnt4_753_bilinear_pairing.miller_loop_on_twisted_curve(g1,g2,'quadratic')
+    miller_output_twisted_curve = mnt4_753.miller_loop_on_twisted_curve(g1,g2,'quadratic')
 
-    pairing_base_curve = mnt4_753_bilinear_pairing.pairing(g1,g2)
+    pairing_base_curve = mnt4_753.pairing(g1,g2)
     pairing_twisted_curve = miller_output_twisted_curve.power((mnt4_753.q**4-1)//mnt4_753.r)
 
     assert(pairing_base_curve == pairing_g1_g2)
@@ -18,8 +17,8 @@ def test_pairing() -> bool:
 
     for i in range(5):
         l = Fr.generate_random_point().x
-        assert(mnt4_753_bilinear_pairing.pairing(g1.multiply(l),g2) == pairing_base_curve.power(l))
-        assert(mnt4_753_bilinear_pairing.pairing(g1,g2.multiply(l)) == pairing_base_curve.power(l))
+        assert(mnt4_753.pairing(g1.multiply(l),g2) == pairing_base_curve.power(l))
+        assert(mnt4_753.pairing(g1,g2.multiply(l)) == pairing_base_curve.power(l))
     
     return True
 
