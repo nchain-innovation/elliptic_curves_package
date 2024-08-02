@@ -35,7 +35,7 @@ assert(pairing_g1_g2.power(random_element) == bls12_381.pairing(g1,g2.multiply(r
 # We can compute it on the base curve and choose the way to eliminate denominators
 miller_loop_output_base_curve = bls12_381.miller_loop_on_base_curve(P=g1,Q=g2,denominator_elimination='quadratic')
 # We can compute it on the twisted curve and choose not to eliminate denominators
-miller_loop_output_twisted_curve = bls12_381.miller_loop_on_base_curve(P=g1,Q=g2)
+miller_loop_output_twisted_curve = bls12_381.miller_loop_on_base_curve(P=g1,Q=g2,denominator_elimination=None)
 
 # The give rise to the same pairing
 assert(hard_exponentiation(easy_exponentiation(miller_loop_output_twisted_curve)) == hard_exponentiation(easy_exponentiation(miller_loop_output_base_curve)))
