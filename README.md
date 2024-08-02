@@ -1,13 +1,17 @@
-# Python implementation of the following models:
-- Finite fields (Fq, Quadratic extensions and Cubic extensions)
-- Elliptic curves in Short-Weierstrass form
-- Bilinear pairings
+# Elliptic_curves
 
-## Instantiations of:
+Python library with implementations of:
+- [Finite fields](./docs/fields.md) (prime fields: 'Fq', quadratic extensions: 'QuadraticExtension', and cubic extensions: 'CubicExtension')
+- [Elliptic curves](./docs/elliptic_curves.md) in Short-Weierstrass form: 'EllipticCurve' and 'ElliptiCurveProjective'
+- [Bilinear pairings](./docs/bilinear_pairings.md): 'BilinearPairingCurve'
+
+## Instantiations currenly implemented:
+
+The library currently contains instantiations of the following curves:
 - BLS12_381
 - MNT4_753
 
-The user wishing to implement new bilinear pairing needs to fetch the relevant defining parameters (modulus, field extensions, curve parameters) and then implement the final exponentiation of the bilinear pairing. See BLS12_381 or MNT4_753 for an example.
+
 
 # Installation.
 
@@ -36,7 +40,7 @@ cd tests/instantiations/mnt4_753
 python mnt4_753_test.py
 ```
 
-# Exectue the tests in the python virtual environment
+# Execute the tests in the python virtual environment
 
 ```bash
 cd tests/instantiations/bls13_381
