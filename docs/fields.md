@@ -1,13 +1,15 @@
 # Finite fields
 
 The library implements three basic classes to work with finite fields:
-- 'Fq', which is the class implementing finite fields of prime cardinality
-- 'QuadraticExtension', which is the class implementing quadratic extension fields
-- 'CubicExtension', which is the class implementing cubic extensions
+- `Fq`, which is the class implementing finite fields of prime cardinality
+- `QuadraticExtension`, which is the class implementing quadratic extension fields
+- `CubicExtension`, which is the class implementing cubic extensions
 
-These classes are not meant to be directly used by the user, rather they are meant to be exported with the functions provided. Below are some example:
+These classes are not meant to be directly used by the user, rather they are meant to be exported with the functions provided. Below are some examples.
 
-```
+## Prime fields
+
+```python
 from elliptic_curves.fields.fq import base_field_from_modulus
 
 # By using the above function, we can instantiate a prime field
@@ -26,7 +28,9 @@ assert(c.power(2) == c * c)
 assert(c * c.invert() == c)
 ```
 
-```
+## Quadratic extensions
+
+```python
 from elliptic_curves.fields.fq import base_field_from_modulus
 from elliptic_curves.fields.quadratic_extension import quadratic_extension_from_base_field_and_non_residue
 
@@ -47,7 +51,9 @@ assert(b + u == Fq2(Fq(1),Fq(2)))
 assert(Fq(2) * b == Fq2(Fq(2),Fq(2)))
 ```
 
-```
+## Cubic extensions
+
+```python
 from elliptic_curves.fields.fq import base_field_from_modulus
 from elliptic_curves.fields.cubic_extension import cubic_extension_from_base_field_and_non_residue
 from elliptic_curves.fields.quadratic_extension import quadratic_extension_from_base_field_and_non_residue

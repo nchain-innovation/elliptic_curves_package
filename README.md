@@ -1,9 +1,9 @@
 # Elliptic_curves
 
 Python library with implementations of:
-- [Finite fields](./docs/fields.md) (prime fields: 'Fq', quadratic extensions: 'QuadraticExtension', and cubic extensions: 'CubicExtension')
-- [Elliptic curves](./docs/elliptic_curves.md) in Short-Weierstrass form: 'EllipticCurve' and 'ElliptiCurveProjective'
-- [Bilinear pairings](./docs/bilinear_pairings.md): 'BilinearPairingCurve'
+- [Finite fields](./docs/fields.md) (prime fields: `Fq`, quadratic extensions: `QuadraticExtension`, and cubic extensions: `CubicExtension`)
+- [Elliptic curves](./docs/elliptic_curves.md) in Short-Weierstrass form: `EllipticCurve` and `ElliptiCurveProjective`
+- [Bilinear pairings](./docs/bilinear_pairings.md): `BilinearPairingCurve`
 
 ## Instantiations currenly implemented:
 

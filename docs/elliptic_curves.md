@@ -1,12 +1,12 @@
 # Finite fields
 
 The library implements two basic classes to work with elliptic curves in Short-Weierstrass form:
-- 'EllipticCurve', which is the class implementing affine elliptic curves in SW form
-- 'EllipticCurveProjective', which is the class implementing projective elliptic curves in SW form
+- `EllipticCurve`, which is the class implementing affine elliptic curves in SW form
+- `EllipticCurveProjective`, which is the class implementing projective elliptic curves in SW form
 
 These classes are not meant to be directly used by the user, rather they are meant to be exported with the functions provided. Below is an example:
 
-```
+```python
 from elliptic_curves.fields.fq import base_field_from_modulus
 
 from elliptic_curves.models.ec import elliptic_curve_from_curve

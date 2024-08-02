@@ -12,7 +12,7 @@ Pairings over two curves have been instatiated as way of example:
 
 The code below shows how to use the instantiations
 
-```
+```python
 from elliptic_curves.instantiations.bls12_381 import Fr, bls12_381, easy_exponetiation, hard_exponentiation
 
 # Fr is the scalar field of BLS12_381
