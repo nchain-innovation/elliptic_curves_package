@@ -22,7 +22,20 @@ def test_pairing() -> bool:
     
     return True
 
+def test_triple_pairing() -> bool:
+    P1 = g1
+    P2 = g1
+    P3 = g1
+    Q1 = g2
+    Q2 = g2
+    Q3 = g2
+
+    triple_pairing = mnt4_753.triple_pairing(P1,P2,P3,Q1,Q2,Q3)
+    return triple_pairing == pairing_g1_g2.power(3)
+
+
 assert(test_pairing())
+assert(test_triple_pairing())
 
 print("MNT4_753: all tests successful")
 

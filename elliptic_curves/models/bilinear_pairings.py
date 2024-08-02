@@ -78,15 +78,16 @@ class BilinearPairing:
 
         return f
     
-    def triple_miller_loop_on_base_curve(self, P1, P2, P3, Q1, Q2, Q3):
+    def triple_miller_loop_on_base_curve(self, P1, P2, P3, Q1, Q2, Q3, denominator_elimination: Optional[str] = None):
         """
         Computes the product of three Miller loops on the base curve.
         It is not optimised at the moment (it computes three loops and multiplies them)
         """
+        assert(denominator_elimination in [None, 'quadratic', 'cubic'])
 
-        out1 = self.miller_loop_on_base_curve(P1,Q1)
-        out2 = self.miller_loop_on_base_curve(P2,Q2)
-        out3 = self.miller_loop_on_base_curve(P3,Q3)
+        out1 = self.miller_loop_on_base_curve(P1,Q1,denominator_elimination)
+        out2 = self.miller_loop_on_base_curve(P2,Q2,denominator_elimination)
+        out3 = self.miller_loop_on_base_curve(P3,Q3,denominator_elimination)
 
         return out1 * out2 * out3
     
@@ -156,15 +157,15 @@ class BilinearPairing:
 
         return f
     
-    def triple_miller_loop_on_twisted_curve(self, P1, P2, P3, Q1, Q2, Q3):
+    def triple_miller_loop_on_twisted_curve(self, P1, P2, P3, Q1, Q2, Q3, denominator_elimination: Optional[str] = None):
         """
         Computes the product of three Miller loops on the base curve.
         It is not optimised at the moment (it computes three loops and multiplies them)
         """
 
-        out1 = self.miller_loop_on_twisted_curve(P1,Q1)
-        out2 = self.miller_loop_on_twisted_curve(P2,Q2)
-        out3 = self.miller_loop_on_twisted_curve(P3,Q3)
+        out1 = self.miller_loop_on_twisted_curve(P1,Q1,denominator_elimination)
+        out2 = self.miller_loop_on_twisted_curve(P2,Q2,denominator_elimination)
+        out3 = self.miller_loop_on_twisted_curve(P3,Q3,denominator_elimination)
 
         return out1 * out2 * out3
     
@@ -172,17 +173,23 @@ class BilinearPairing:
         """
         Computes the bilinear pairing on P and Q
         """
-
-        out = self.miller_loop_on_base_curve(P,Q)
-        out = self.easy_exponentiation(out)
-        out = self.hard_exponentiation(out)
+        if P.is_infinity() or Q.is_infinity():
+            return self.miller_output_type.identity()
+        else:
+            out = self.miller_loop_on_base_curve(P,Q)
+            out = self.easy_exponentiation(out)
+            out = self.hard_exponentiation(out)
 
         return out
 
     def triple_pairing(self, P1, P2, P3, Q1, Q2, Q3):
         """
         Computes the product of three pairings
+
+        The current implementation only allows the computation when neither of the Pi's or the Qi's is the point at infinity
         """
+
+        assert(not(P1.is_infinity() or P2.is_infinity() or P3.is_infinity() or Q1.is_infinity() or Q2.is_infinity() or Q3.is_infinity())) 
 
         out = self.triple_miller_loop_on_base_curve(P1,P2,P3,Q1,Q2,Q3)
         out = self.easy_exponentiation(out)

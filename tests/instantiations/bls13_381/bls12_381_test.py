@@ -23,6 +23,17 @@ def test_pairing() -> bool:
     
     return True
 
+def test_triple_pairing() -> bool:
+    P1 = g1
+    P2 = g1
+    P3 = g1
+    Q1 = g2
+    Q2 = g2
+    Q3 = g2
+
+    triple_pairing = bls12_381.triple_pairing(P1,P2,P3,Q1,Q2,Q3)
+    return triple_pairing == pairing_g1_g2.power(3)
+
 def test_deserialisation() -> bool:
     # 151 & (1 << 7) = 128 => Testing largest y
     serialised_point = [31, 28, 104, 58, 214, 230, 251, 140, 108, 133, 193, 237, 1, 216, 231, 231, 155, 5, 133, 235, 18, 220, 209, 212, 203, 63, 62, 143, 144, 60, 31, 75, 249, 184, 224, 109, 197, 76, 189, 229, 228, 166, 24, 239, 5, 183, 145, 1, 204, 242, 43, 33, 236, 146, 143, 238, 176, 169, 155, 46, 28, 178, 38, 164, 65, 163, 100, 209, 92, 174, 48, 126, 67, 78, 253, 164, 222, 219, 122, 82, 255, 8, 75, 215, 45, 186, 68, 234, 206, 27, 40, 145, 219, 72, 33, 151]
@@ -65,6 +76,7 @@ def test_deserialisation_proof() -> bool:
 
 
 assert(test_pairing())
+assert(test_triple_pairing())
 assert(test_deserialisation())
 assert(test_deserialisation_vk())
 assert(test_deserialisation_proof())
