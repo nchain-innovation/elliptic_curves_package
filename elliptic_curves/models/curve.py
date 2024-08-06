@@ -113,3 +113,79 @@ class BilinearPairingCurve(BilinearPairing):
         return {'a': a,
                 'b': b,
                 'c': c}
+    
+    def prepare_groth16_proof(self, pub, proof, vk, miller_loop_type, denominator_elimination):
+        """
+        Take a a list of public statements, a proof and a vk, returns the data needed to generate the unlocking script for the Groth16 Bitcoin Script verifier [ref]
+		
+		Miller loop type is either 'base_curve' or 'twisted_curve'
+        """
+        assert(miller_loop_type in ['base_curve','twisted_curve'])
+        assert(denominator_elimination in [None,'quadratic','cubic'])
+
+        exp_t_minus_one = self.exp_t_minus_one
+
+        gamma = vk['gamma']
+        delta = vk['delta']
+        gamma_abc = vk['gamma_abc']
+
+        A = proof['a']
+        B = proof['b']
+        C = proof['c']
+
+        pub_extended = [1] + pub
+
+        # Compute \sum_(i=0)^l a_i * gamma_abc[i]
+        n_pub = len(pub_extended) - 1
+        sum_gamma_abc = gamma_abc[0]
+        for i in range(1,n_pub+1):
+            sum_gamma_abc += gamma_abc[i].multiply(pub_extended[i])
+
+        # Lambdas for the pairing
+        lambdas_B_exp_t_minus_one = [list(map(lambda s: s.to_list(),el)) for el in B.get_lambdas(exp_t_minus_one)]
+        lambdas_minus_gamma_exp_t_minus_one = [list(map(lambda s: s.to_list(),el)) for el in (-gamma).get_lambdas(exp_t_minus_one)]
+        lambdas_minus_delta_exp_t_minus_one = [list(map(lambda s: s.to_list(),el)) for el in (-delta).get_lambdas(exp_t_minus_one)]
+
+		# Inverse of the Miller loop output
+        match miller_loop_type:
+            case 'base_curve':
+                inverse_miller_loop = self.triple_miller_loop_on_base_curve(A,sum_gamma_abc,C,B,-gamma,-delta,denominator_elimination).invert().to_list()
+            case 'twisted_curve':
+                inverse_miller_loop = self.triple_miller_loop_on_twisted_curve(A,sum_gamma_abc,C,B,-gamma,-delta,denominator_elimination).invert().to_list()
+
+        # Compute lamdbas for partial sums: gradients between a_i * gamma_abc[i] and \sum_(j=0)^(i-1) a_j * gamma_abc[j]
+        lamdbas_partial_sums = []
+        for i in range(n_pub,0,-1):
+            sum_gamma_abc -= gamma_abc[i].multiply(pub_extended[i])
+            if sum_gamma_abc.is_infinity() or gamma_abc[i].multiply(pub_extended[i]).is_infinity():
+                lamdbas_partial_sums.append([])
+            else:
+                lam = sum_gamma_abc.get_lambda(gamma_abc[i].multiply(pub_extended[i]))
+                lamdbas_partial_sums.append(lam.to_list())
+
+		# Lambdas for multiplications pub[i] * gamma_abc[i]
+        lambdas_multiplications = []
+        for i in range(1,n_pub+1):
+            if pub_extended[i] == 0:
+                lambdas_multiplications.append([])
+            else:
+                # Binary expansion of pub[i]
+                exp_pub_i = [int(bin(pub_extended[i])[j]) for j in range(2,len(bin(pub_extended[i])))][::-1]
+
+                lambdas_multiplications.append([list(map(lambda s: s.to_list(),el)) for el in gamma_abc[i].get_lambdas(exp_pub_i)])
+        
+
+        out = {
+            'pub': pub,
+            'A': A.to_list(),
+            'B': B.to_list(),
+            'C': C.to_list(),
+            'lambdas_B_exp_t_minus_one': lambdas_B_exp_t_minus_one,
+            'lambdas_minus_gamma_exp_t_minus_one': lambdas_minus_gamma_exp_t_minus_one,
+            'lambdas_minus_delta_exp_t_minus_one': lambdas_minus_delta_exp_t_minus_one,
+            'inverse_miller_loop': inverse_miller_loop,
+            'lamdbas_partial_sums': lamdbas_partial_sums,
+            'lambdas_multiplications': lambdas_multiplications
+        }
+
+        return out
