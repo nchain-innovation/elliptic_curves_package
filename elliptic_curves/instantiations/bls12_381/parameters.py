@@ -4,7 +4,7 @@
 u = -0xD201000000010000
 
 # Signed base two decomposition of u - LSB to MSB
-exp_t_minus_one = [-int(bin(abs(u))[i]) for i in range(2,len(bin(abs(u))))][::-1]
+exp_miller_loop = [-int(bin(abs(u))[i]) for i in range(2,len(bin(abs(u))))][::-1]
 
 # Modulus
 q = (u-1)**2 * (u**4 - u**2 + 1) // 3 + u

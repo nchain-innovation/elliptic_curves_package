@@ -1,6 +1,6 @@
 # Finite fields
 
-The library implements a class `BilinearPairing` to handle the evaluation of bilinear pairings on pairing-friendly curves.
+The library implements a class `BilinearPairing` to handle the evaluation of bilinear pairings on pairing-friendly curves. The current implementation is only able to handle bilinear pairings which entail the computation of a single Miller loop, and that do not require further multiplications at the end of the Miller loop (e.g., BLS12 curves and MNT4 curves are supported).
 
 To implement the calculation of a bilinear pairing on a pairing friendly curve, a user only needs to implement the finite fields required by the curve (for which the finite field class are provided), and then implement the final exponentiation for the particular curve of interest.
 

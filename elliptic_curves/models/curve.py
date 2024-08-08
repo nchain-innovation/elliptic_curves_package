@@ -22,11 +22,13 @@ class Curve:
             return y.power(2) - x.power(3) - self.a * x - self.b * Field.identity()
         
 class BilinearPairingCurve(BilinearPairing):
-    def __init__(self, q, r, t_minus_one, exp_t_minus_one, h1, h2, curve, twisted_curve, g1, g2, miller_output_type, easy_exponentiation, hard_exponentiation):
+    def __init__(self, q, r, val_miller_loop, exp_miller_loop, h1, h2, curve, twisted_curve, g1, g2, miller_output_type, easy_exponentiation, hard_exponentiation):
         self.q = q
         self.r = r
-        self.t_minus_one = t_minus_one
-        self.exp_t_minus_one = exp_t_minus_one
+        # Value for which we compute the Miller loop: a s.t. e(P,Q) requires computing f_{a,Q}(P)
+        self.val_miller_loop = val_miller_loop
+        # Signed binary expansion of val_miller_loop
+        self.exp_miller_loop = exp_miller_loop
         self.h1 = h1
         self.h2 = h2
         self.curve = curve
@@ -123,7 +125,7 @@ class BilinearPairingCurve(BilinearPairing):
         assert(miller_loop_type in ['base_curve','twisted_curve'])
         assert(denominator_elimination in [None,'quadratic','cubic'])
 
-        exp_t_minus_one = self.exp_t_minus_one
+        exp_miller_loop = self.exp_miller_loop
 
         gamma = vk['gamma']
         delta = vk['delta']
@@ -142,9 +144,9 @@ class BilinearPairingCurve(BilinearPairing):
             sum_gamma_abc += gamma_abc[i].multiply(pub_extended[i])
 
         # Lambdas for the pairing
-        lambdas_B_exp_t_minus_one = [list(map(lambda s: s.to_list(),el)) for el in B.get_lambdas(exp_t_minus_one)]
-        lambdas_minus_gamma_exp_t_minus_one = [list(map(lambda s: s.to_list(),el)) for el in (-gamma).get_lambdas(exp_t_minus_one)]
-        lambdas_minus_delta_exp_t_minus_one = [list(map(lambda s: s.to_list(),el)) for el in (-delta).get_lambdas(exp_t_minus_one)]
+        lambdas_B_exp_miller_loop = [list(map(lambda s: s.to_list(),el)) for el in B.get_lambdas(exp_miller_loop)]
+        lambdas_minus_gamma_exp_miller_loop = [list(map(lambda s: s.to_list(),el)) for el in (-gamma).get_lambdas(exp_miller_loop)]
+        lambdas_minus_delta_exp_miller_loop = [list(map(lambda s: s.to_list(),el)) for el in (-delta).get_lambdas(exp_miller_loop)]
 
 		# Inverse of the Miller loop output
         match miller_loop_type:
@@ -180,9 +182,9 @@ class BilinearPairingCurve(BilinearPairing):
             'A': A.to_list(),
             'B': B.to_list(),
             'C': C.to_list(),
-            'lambdas_B_exp_t_minus_one': lambdas_B_exp_t_minus_one,
-            'lambdas_minus_gamma_exp_t_minus_one': lambdas_minus_gamma_exp_t_minus_one,
-            'lambdas_minus_delta_exp_t_minus_one': lambdas_minus_delta_exp_t_minus_one,
+            'lambdas_B_exp_miller_loop': lambdas_B_exp_miller_loop,
+            'lambdas_minus_gamma_exp_miller_loop': lambdas_minus_gamma_exp_miller_loop,
+            'lambdas_minus_delta_exp_miller_loop': lambdas_minus_delta_exp_miller_loop,
             'inverse_miller_loop': inverse_miller_loop,
             'lamdbas_partial_sums': lamdbas_partial_sums,
             'lambdas_multiplications': lambdas_multiplications

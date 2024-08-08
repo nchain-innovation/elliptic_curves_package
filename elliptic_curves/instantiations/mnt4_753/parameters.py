@@ -4,7 +4,7 @@
 u = -0x15474b1d641a3fd86dcbcee5dcda7fe51852c8cbe26e600733b714aa43c31a66b0344c4e2c428b07a7713041ba18000
 
 # Signed base two decomposition of abs(u) - MSB to LSB (minus_exp_u is LSB to MSB)
-minus_exp_t_minus_one = [
+minus_exp_miller_loop = [
         1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, -1, 0, 1, 0, 1, 0, -1, 0, -1, 0, 0, 1, 0, 0, 0, -1, 0,
         -1, 0, -1, 0, 0, 1, 0, 0, 0, 0, 1, 0, -1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, -1,
         0, 0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 1, 0, -1, 0, 0, 0, -1, 0, 1, 0, 0, 0, -1, 0,
@@ -20,7 +20,7 @@ minus_exp_t_minus_one = [
         0, 0, 1, 0, 0, -1, 0, 0, -1, 0, 1, 0, 0, 0, 1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0,
     ][::-1]
-exp_t_minus_one = [-el for el in minus_exp_t_minus_one]
+exp_miller_loop = [-el for el in minus_exp_miller_loop]
 
 # Modulus
 q = u**2 + u + 1

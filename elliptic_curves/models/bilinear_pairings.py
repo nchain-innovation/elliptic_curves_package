@@ -5,7 +5,7 @@ class BilinearPairing:
     def __init__(self, bilinear_pairing_curve, miller_output_type, easy_exponentiation, hard_exponentation):
         self.curve = bilinear_pairing_curve.curve
         self.twisted_curve = bilinear_pairing_curve.twisted_curve
-        self.exp_t_minus_one = bilinear_pairing_curve.exp_t_minus_one
+        self.exp_miller_loop = bilinear_pairing_curve.exp_miller_loop
         self.miller_output_type = miller_output_type
         self.easy_exponentiation = easy_exponentiation
         self.hard_exponentiation = hard_exponentation
@@ -23,16 +23,16 @@ class BilinearPairing:
 
         f = self.miller_output_type.identity()
         untwisted_Q = Q.to_base_curve()
-        exp_t_minus_one = self.exp_t_minus_one
+        exp_miller_loop = self.exp_miller_loop
 
-        if exp_t_minus_one[-1] == 1:
+        if exp_miller_loop[-1] == 1:
             T = untwisted_Q
-        elif exp_t_minus_one[-1] == -1:
+        elif exp_miller_loop[-1] == -1:
             T = -untwisted_Q
         else:
-            raise ValueError('The most significant element of exp_t_minus_one must be non-zero')
+            raise ValueError('The most significant element of exp_miller_loop must be non-zero')
 
-        for i in range(len(exp_t_minus_one)-2,-1,-1):
+        for i in range(len(exp_miller_loop)-2,-1,-1):
             f = f.power(2)
 
             line_eval = T.line_evaluation(T,P)
@@ -48,7 +48,7 @@ class BilinearPairing:
 
             f = f.mul_by_line_eval(line_eval)
             
-            if exp_t_minus_one[i] == 1:
+            if exp_miller_loop[i] == 1:
                 line_eval = T.line_evaluation(untwisted_Q,P)
                 T = T + untwisted_Q
                 
@@ -61,7 +61,7 @@ class BilinearPairing:
                         line_eval = line_eval * T.line_evaluation(-T,P).invert()
                 
                 f = f.mul_by_line_eval(line_eval)
-            elif exp_t_minus_one[i] == -1:
+            elif exp_miller_loop[i] == -1:
                 line_eval = T.line_evaluation(-untwisted_Q,P)
                 T = T - untwisted_Q
                 
@@ -102,16 +102,16 @@ class BilinearPairing:
 
         f = self.miller_output_type.identity()
         twisted_P = P.to_twisted_curve()
-        exp_t_minus_one = self.exp_t_minus_one
+        exp_miller_loop = self.exp_miller_loop
 
-        if exp_t_minus_one[-1] == 1:
+        if exp_miller_loop[-1] == 1:
             T = deepcopy(Q)
-        elif exp_t_minus_one[-1] == -1:
+        elif exp_miller_loop[-1] == -1:
             T = -deepcopy(Q)
         else:
-            raise ValueError('The most significant element of exp_t_minus_one must be non-zero')
+            raise ValueError('The most significant element of exp_miller_loop must be non-zero')
         
-        for i in range(len(exp_t_minus_one)-2,-1,-1):
+        for i in range(len(exp_miller_loop)-2,-1,-1):
             f = f.power(2)
 
             line_eval = T.line_evaluation(T,twisted_P)
@@ -127,7 +127,7 @@ class BilinearPairing:
 
             f = f.mul_by_line_eval(line_eval)
             
-            if exp_t_minus_one[i] == 1:
+            if exp_miller_loop[i] == 1:
                 line_eval = T.line_evaluation(Q,twisted_P)
                 T = T + Q
                 
@@ -140,7 +140,7 @@ class BilinearPairing:
                         line_eval = line_eval * T.line_evaluation(-T,twisted_P).invert()
                 
                 f = f.mul_by_line_eval(line_eval)
-            elif exp_t_minus_one[i] == -1:
+            elif exp_miller_loop[i] == -1:
                 line_eval = T.line_evaluation(-Q,twisted_P)
                 T = T - Q
                 

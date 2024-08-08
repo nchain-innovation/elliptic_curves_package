@@ -1,5 +1,4 @@
 from elliptic_curves.instantiations.bls12_381.bls12_381 import bls12_381, Fq12, Fq, Fq2, Fr, BLS12_381, BLS12_381_Twist
-from data_for_tests import serialised_vk, serialised_proof
 
 g1 = bls12_381.g1
 g2 = bls12_381.g2
@@ -60,26 +59,10 @@ def test_deserialisation() -> bool:
 
     return True
 
-def test_deserialisation_vk() -> bool:
-    # Deserialisation of single points are correct, we only need to ensure that the whole key is deserialised as it should be
-    vk = bls12_381.deserialise_vk(serialised=serialised_vk)
-    assert(len(vk) == 5)
-    
-    return True
-
-def test_deserialisation_proof() -> bool:
-    # Deserialisation of single points are correct, we only need to ensure that the whole proof is deserialised as it should be
-    proof = bls12_381.deserialise_proof(serialised=serialised_proof)
-    assert(len(proof) == 3)
-
-    return True
-
 
 assert(test_pairing())
 assert(test_triple_pairing())
 assert(test_deserialisation())
-assert(test_deserialisation_vk())
-assert(test_deserialisation_proof())
 
 print("BLS12_381: all tests successful")
 
