@@ -197,8 +197,7 @@ class EllipticCurve:
         is_largest = (serialised[-1] >> 7) & 1
         
         if is_infinity:
-                return EllipticCurve.point_at_infinity()
-            
+            return EllipticCurve.point_at_infinity()
         else:        
             serialised_x = serialised[:len(serialised)//2]
             x = field.deserialise(serialised_x)
@@ -376,8 +375,7 @@ def elliptic_curve_from_curve(curve):
             is_largest = (serialised[-1] >> 7) & 1
             
             if is_infinity:
-                    return AffineEllipticCurve.point_at_infinity()
-                
+                return AffineEllipticCurve.point_at_infinity()
             else:        
                 serialised_x = serialised[:len(serialised)//2]
                 x = field.deserialise(serialised_x)
