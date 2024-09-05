@@ -1,4 +1,5 @@
 # Curve parameters ------------------------------------------------------------------------------------------------------
+# Taken from [https://github.com/arkworks-rs/curves/tree/master/mnt4_753/src/curves]
 
 # Seed
 u = -0x15474b1d641a3fd86dcbcee5dcda7fe51852c8cbe26e600733b714aa43c31a66b0344c4e2c428b07a7713041ba18000

@@ -43,7 +43,7 @@ class BilinearPairingCurve(BilinearPairing):
     
     def deserialise_vk(self, serialised: list[bytes]):
         '''
-        Deserialise the serialisation of a verifying key. This function is based on the deserialisation of VK in arkworks. [ref]
+        Deserialise the serialisation of a verifying key. This function is based on the deserialisation of VK in arkworks. [https://github.com/arkworks-rs/groth16/blob/master/src/data_structures.rs#L32]
 
         vk is a list of: alpha_g1, beta_g2, gamma_g2, delta_g2, gamma_abc_g1, and each element is serialised in turn
             alpha_g1 -> element in G1
@@ -87,7 +87,7 @@ class BilinearPairingCurve(BilinearPairing):
 
     def deserialise_proof(self, serialised: list[bytes]):
         """
-        Function to deserialise a proof. This function is based on arkworks deserialisation of a proof. [ref]
+        Function to deserialise a proof. This function is based on arkworks deserialisation of a proof. [https://github.com/arkworks-rs/groth16/blob/master/src/data_structures.rs#L9]
 
         A proof is formed by: A, B, C, and each element is serialised in turn
             A, C -> elements in G1
@@ -118,7 +118,7 @@ class BilinearPairingCurve(BilinearPairing):
     
     def prepare_groth16_proof(self, pub, proof, vk, miller_loop_type, denominator_elimination):
         """
-        Take a a list of public statements, a proof and a vk, returns the data needed to generate the unlocking script for the Groth16 Bitcoin Script verifier [ref]
+        Take a a list of public statements, a proof and a vk, returns the data needed to generate the unlocking script for the Groth16 Bitcoin Script verifier [https://github.com/nchain-innovation/zkscript_package/blob/main/zkscript/groth16/model/groth16.py#L141]
 		
 		Miller loop type is either 'base_curve' or 'twisted_curve'
         """

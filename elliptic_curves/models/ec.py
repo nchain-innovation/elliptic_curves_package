@@ -183,7 +183,7 @@ class EllipticCurve:
     def deserialise(serialised: list[bytes], field):
         """
         Function that a list of integers and inteprets it as a point on the elliptic curve self and returns its serialisation.
-        This function is based on the deserialisation function for the trait SWCurveConfig of arkworks, only uncompressed mode. [ref]
+        This function is based on the deserialisation function for the trait SWCurveConfig of arkworks, only uncompressed mode. [https://github.com/arkworks-rs/algebra/blob/master/ec/src/models/short_weierstrass/mod.rs#L115]
         
         It works as follows: serialised is a list of ints representing the little-endian encoding of (x,y). The encoding is:
             [LE(x), LE(y)_mod]
@@ -206,8 +206,11 @@ class EllipticCurve:
             serialised_y[-1] = serialised_y[-1]  & ~(1 << 7)
             y = field.deserialise(serialised_y)
 
-            y_is_largest = False
+            y_is_largest = None
             for el, minus_el in zip(y.to_list()[::-1],(-y).to_list()[::-1]):
+                if el < minus_el:
+                    y_is_largest = False
+                    break
                 if el > minus_el:
                     y_is_largest = True
                     break
@@ -382,8 +385,11 @@ def elliptic_curve_from_curve(curve):
                 serialised_y[-1] = serialised_y[-1]  & ~(1 << 7)
                 y = field.deserialise(serialised_y)
 
-                y_is_largest = False
+                y_is_largest = None
                 for el, minus_el in zip(y.to_list()[::-1],(-y).to_list()[::-1]):
+                    if el < minus_el:
+                        y_is_largest = False
+                        break
                     if el > minus_el:
                         y_is_largest = True
                         break
