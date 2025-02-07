@@ -1,5 +1,7 @@
-from copy import deepcopy
 from math import gcd
+
+from elliptic_curves.fields.prime_field import PrimeFieldElement
+
 
 # The following class is not meant to be used by the user. It should be re-exported using the function below
 class QuadraticExtension:
@@ -7,118 +9,273 @@ class QuadraticExtension:
     Field F, quadratic extension of base field B.
     F = B[u] / (u^2 - non_residue)
     """
-    NON_RESIDUE = None
-    BASE_FIELD = None
-    EXTENSION_DEGREE = None
-    EXTENSION_DEGREE_OVER_BASE_FIELD = None
 
-    def __init__(self, x0, x1):
-        self.x0 = x0
-        self.x1 = x1
+    EXTENSION_DEGREE_OVER_BASE_FIELD = 2
 
+    def __init__(self, base_field, non_residue: PrimeFieldElement):
+        self.base_field = base_field
+        self.non_residue = non_residue
         return
 
-    def __eq__(x,y):
-        return x.__dict__== y.__dict__
+    def __call__(self, x0: PrimeFieldElement, x1: PrimeFieldElement):
+        return QuadraticExtensionElement(self, x0, x1)
 
-    def __add__(x,y):
-        assert(type(x) == type(y))
-        Field = type(x)
+    def __eq__(field, other):
+        result = True
+        result &= type(other) is type(field)
+        if not result:
+            return result
+        else:
+            result &= field.base_field == other.base_field
+            return (
+                result
+                if not result
+                else result & (field.non_residue == other.non_residue)
+            )
 
-        return Field(x.x0 + y.x0, x.x1 + y.x1)
+    def get_modulus(self):
+        return self.base_field.get_modulus()
 
-    def __sub__(x,y):
-        assert(type(x) == type(y))
-        Field = type(x)
+    def get_extension_degree_over_prime_field(self):
+        return (
+            QuadraticExtension.EXTENSION_DEGREE_OVER_BASE_FIELD
+            * self.base_field.get_extension_degree_over_prime_field()
+        )
 
-        return Field(x.x0 - y.x0, x.x1 - y.x1)
+    def identity(self):
+        return QuadraticExtensionElement(
+            self, self.base_field.identity(), self.base_field.zero()
+        )
+
+    def zero(self):
+        return QuadraticExtensionElement(
+            self, self.base_field.zero(), self.base_field.zero()
+        )
+
+    def u(self):
+        return QuadraticExtensionElement(
+            self, self.base_field.zero(), self.base_field.identity()
+        )
+
+    def generate_random_point(self):
+        return QuadraticExtensionElement(
+            self,
+            self.base_field.generate_random_point(),
+            self.base_field.generate_random_point(),
+        )
+
+    def from_list(self, elements: list[int]):
+        """Reads a list of integers into an element of QuadraticExtension."""
+        extension_degree_over_prime_field = self.get_extension_degree_over_prime_field()
+
+        assert len(elements) == extension_degree_over_prime_field
+
+        return QuadraticExtensionElement(
+            self,
+            self.base_field.from_list(
+                elements[: extension_degree_over_prime_field // 2]
+            ),
+            self.base_field.from_list(
+                elements[extension_degree_over_prime_field // 2 :]
+            ),
+        )
+
+    def deserialise(self, serialised: list[bytes]):
+        """Reads a sequence of bytes into an element of QuadraticExtension"""
+        length = (
+            (self.get_modulus().bit_length() + 8)
+            // 8
+            * self.get_extension_degree_over_prime_field()
+        )
+        assert len(serialised) == length
+
+        return QuadraticExtensionElement(
+            self,
+            self.base_field.deserialise(serialised[: length // 2]),
+            self.base_field.deserialise(serialised[length // 2 :]),
+        )
+
+
+class QuadraticExtensionElement:
+    def __init__(self, field: QuadraticExtension, x0, x1):
+        self.field = field
+        self.x0 = x0
+        self.x1 = x1
+        return
+
+    def is_same_field(self, other):
+        result = True
+        result &= type(other) is type(self)
+        return result if not result else result & (self.field == other.field)
+
+    def get_modulus(self):
+        """Return the modulus (i.e., characteristic) of the base field."""
+        return self.field.get_modulus()
+
+    def copy_with_same_field(self):
+        return QuadraticExtensionElement(
+            self.field,
+            self.x0.copy_with_same_field(),
+            self.x1.copy_with_same_field(),
+        )
+
+    def __eq__(element, other):
+        result = True
+        result &= element.is_same_field(other)
+        result &= element.x0 == other.x0
+        return result & (element.x1 == other.x1)
+
+    def __add__(element, other):
+        if type(other) is PrimeFieldElement:
+            # Multiplication by element in prime field
+            assert element.get_modulus() == other.get_modulus()
+            return QuadraticExtensionElement(
+                element.field, element.x0 + other, element.x1
+            )
+        elif element.is_same_field(other):
+            # Same field
+            return QuadraticExtensionElement(
+                element.field,
+                element.x0 + other.x0,
+                element.x1 + other.x1,
+            )
+        elif (
+            gcd(
+                element.field.get_extension_degree_over_prime_field(),
+                other.field.get_extension_degree_over_prime_field(),
+            )
+            == 1
+        ):
+            # Neither field can be an extension of the other
+            raise ValueError("Operation not implemented")
+        else:
+            # One of the two fields is an extension of the other
+            a = element.copy_with_same_field()
+            b = other.copy_with_same_field()
+            # Ensure the first element is the one in the largest extension degree
+            if (
+                a.field.get_extension_degree_over_prime_field()
+                < b.field.get_extension_degree_over_prime_field()
+            ):
+                a, b = b, a
+            if a.field.EXTENSION_DEGREE_OVER_BASE_FIELD == 2:
+                if (
+                    a.field.get_extension_degree_over_prime_field() // 2
+                    < b.field.get_extension_degree_over_prime_field()
+                ):
+                    # Neither field can be an extension of the other
+                    raise ValueError("Operation not implemented")
+                target_type = type(a)
+                return target_type(a.field, a.x0 + b, a.x1)
+            elif a.field.EXTENSION_DEGREE_OVER_BASE_FIELD == 3:
+                if (
+                    a.field.get_extension_degree_over_prime_field() // 3
+                    < b.field.get_extension_degree_over_prime_field()
+                ):
+                    # Neither field can be an extension of the other
+                    raise ValueError("Operation not implemented")
+                target_type = type(a)
+                return target_type(a.field, a.x0 + b, a.x1, a.x2)
+            else:
+                raise ValueError("Operation not implemented")
+
+    def __sub__(element, other):
+        return element + (-other)
 
     def __neg__(self):
-        Field = type(self)
+        return QuadraticExtensionElement(self.field, -self.x0, -self.x1)
 
-        return Field(-self.x0,-self.x1)
-
-    def __mul__(x,y):
-        Field = type(x)
-        Field_Y = type(y)
-
-        # Field_Y is not the base fields, and neither field can be an extension of the other
-        if gcd(Field.EXTENSION_DEGREE,Field_Y.EXTENSION_DEGREE) == 1 and Field_Y.EXTENSION_DEGREE != 1:
-            raise ValueError('Multiplication not implemented')
-
-        if Field_Y == Field: # Same type
-            return Field(x.x0 * y.x0 + x.x1 * y.x1 * Field.NON_RESIDUE, x.x0 * y.x1 + x.x1 * y.x0)
+    def __mul__(element, other):
+        if type(other) is PrimeFieldElement:
+            # Multiplication by element in prime field
+            assert element.get_modulus() == other.get_modulus()
+            return QuadraticExtensionElement(
+                element.field, element.x0 * other, element.x1 * other
+            )
+        elif element.is_same_field(other):
+            # Same field
+            return QuadraticExtensionElement(
+                element.field,
+                element.x0 * other.x0
+                + element.x1 * other.x1 * element.field.non_residue,
+                element.x0 * other.x1 + element.x1 * other.x0,
+            )
+        elif (
+            gcd(
+                element.field.get_extension_degree_over_prime_field(),
+                other.field.get_extension_degree_over_prime_field(),
+            )
+            == 1
+        ):
+            # Neither field can be an extension of the other
+            raise ValueError("Operation not implemented")
         else:
-            a = deepcopy(x)
-            b = deepcopy(y)
-            # Ensure first element is in the largest extension
-            if Field.EXTENSION_DEGREE < Field_Y.EXTENSION_DEGREE:
+            # One of the two fields is an extension of the other
+            a = element.copy_with_same_field()
+            b = other.copy_with_same_field()
+            # Ensure the first element is the one in the largest extension degree
+            if (
+                a.field.get_extension_degree_over_prime_field()
+                < b.field.get_extension_degree_over_prime_field()
+            ):
                 a, b = b, a
-                Field, Field_Y = Field_Y, Field
-            if Field.EXTENSION_DEGREE_OVER_BASE_FIELD == 2:
-                try:
-                    return Field(a.x0 * b, a.x1 * b)
-                # Otherwise, raise exception
-                except:
-                    raise ValueError('Multiplication not implemented')
-            elif Field.EXTENSION_DEGREE_OVER_BASE_FIELD == 3:
-                try:
-                    return Field(a.x0 * b, a.x1 * b, a.x2 * b)
-                # Otherwise, raise exception
-                except:
-                    raise ValueError('Multiplication not implemented')
+            if a.field.EXTENSION_DEGREE_OVER_BASE_FIELD == 2:
+                if (
+                    a.field.get_extension_degree_over_prime_field() // 2
+                    < b.field.get_extension_degree_over_prime_field()
+                ):
+                    # Neither field can be an extension of the other
+                    raise ValueError("Operation not implemented")
+                target_type = type(a)
+                return target_type(a.field, a.x0 * b, a.x1 * b)
+            elif a.field.EXTENSION_DEGREE_OVER_BASE_FIELD == 3:
+                if (
+                    a.field.get_extension_degree_over_prime_field() // 3
+                    < b.field.get_extension_degree_over_prime_field()
+                ):
+                    # Neither field can be an extension of the other
+                    raise ValueError("Operation not implemented")
+                target_type = type(a)
+                return target_type(a.field, a.x0 * b, a.x1 * b, a.x2 * b)
             else:
-                    raise ValueError('Multiplication not implemented')
-            
+                raise ValueError("Operation not implemented")
+
     def __repr__(self):
-        return f'({self.x0},{self.x1})'
+        return f"Fq{self.field.get_extension_degree_over_prime_field()}(\n{self.x0},\n{self.x1}\n)"
 
     def conjugate(self):
-        Field = type(self)
-
-        return Field(self.x0,-self.x1)
+        return QuadraticExtensionElement(self.field, self.x0, -self.x1)
 
     def invert(self):
-        assert(not self.is_zero())
-        Field = type(self)
+        assert not self.is_zero()
 
-        z = self.x0.power(2) - self.x1.power(2) * Field.NON_RESIDUE
+        z = self.x0.power(2) - self.x1.power(2) * self.field.non_residue
         z = z.invert()
 
         conjugate = self.conjugate()
 
-        return Field(conjugate.x0 * z, conjugate.x1 * z)
-
-    def identity():
-        return QuadraticExtension(QuadraticExtension.BASE_FIELD.identity(),QuadraticExtension.BASE_FIELD.zero())
-
-    def zero():
-        return QuadraticExtension(QuadraticExtension.BASE_FIELD.zero(),QuadraticExtension.BASE_FIELD.zero())
+        return QuadraticExtensionElement(self.field, conjugate.x0 * z, conjugate.x1 * z)
 
     def is_zero(self):
         return self.x0.is_zero() and self.x1.is_zero()
 
-    def scalar_mul(self, n:int):
-        Field = type(self)
+    def scalar_mul(self, n: int):
+        return QuadraticExtensionElement(
+            self.field, self.x0.scalar_mul(n), self.x1.scalar_mul(n)
+        )
 
-        return Field(self.x0.scalar_mul(n), self.x1.scalar_mul(n))
-
-    def u():
-        return QuadraticExtension(QuadraticExtension.BASE_FIELD.zero(),QuadraticExtension.BASE_FIELD.identity())
-
-    def power(self,n: int):
+    def power(self, n: int):
         if self.is_zero():
             if n != 0:
-                return deepcopy(self)
+                return self.copy_with_same_field()
             else:
-                return ValueError('0^0 is not defined')
-        
-        Field = type(self)
+                return ValueError("0^0 is not defined")
+
         if n == 0:
-            return Field.identity()
-            
-        val = deepcopy(self)
-        result = Field.identity()
+            return self.field.identity()
+
+        val = self.copy_with_same_field()
+        result = self.field.identity()
 
         if n < 0:
             n = -n
@@ -132,149 +289,32 @@ class QuadraticExtension:
 
         return result
 
-    def generate_random_point():
-        x0 = QuadraticExtension.BASE_FIELD.generate_random_point()
-        x1 = QuadraticExtension.BASE_FIELD.generate_random_point()
+    def frobenius(self, n: int):
+        """Frobenius: f -> f^q^n."""
+        gamma = self.field.non_residue.power(
+            (
+                self.get_modulus()
+                ** (n % self.field.get_extension_degree_over_prime_field())
+                - 1
+            )
+            // 2
+        )
 
-        return QuadraticExtension(x0,x1)
-    
-    def frobenius(self, n:int):
-        """
-        Frobenius: f -> f^q^n
-        """
-        Field = type(self)
-        gamma = Field.NON_RESIDUE.power((Field.get_modulus()**(n % Field.EXTENSION_DEGREE)-1)//2)
+        return QuadraticExtensionElement(
+            self.field,
+            self.x0.frobenius(n),
+            self.x1.frobenius(n) * gamma,
+        )
 
-        return Field(self.x0.frobenius(n), self.x1.frobenius(n) * gamma)
-    
-    def get_modulus():
-        """
-        Get MODULUS (i.e., characteristic) of the field
-        """
-
-        return QuadraticExtension.BASE_FIELD.get_modulus()
-    
     def to_list(self):
-        """
-        Convert element to list of its coordinates. The order is: x0, x1
-        """
-        
-        x0_list = self.x0.to_list()
-        x1_list = self.x1.to_list()
+        """Convert element to list of its coordinates. The order is: x0, x1."""
 
-        out = []
-        out.extend(x0_list)
-        out.extend(x1_list)
+        return [*self.x0.to_list(), *self.x1.to_list()]
 
-        return out
-    
-    def from_list(L: list[int], q: int):
-        """
-        Reads a list into an element of QuadraticExtension
-        """
-        assert(len(L) == QuadraticExtension.EXTENSION_DEGREE)
-
-        tmp = []
-        index = 0
-        for i in range(2):
-            tmp.append(QuadraticExtension.BASE_FIELD.from_list(L[index:index+QuadraticExtension.EXTENSION_DEGREE//2]))
-            index += QuadraticExtension.EXTENSION_DEGREE//2
-        
-        return QuadraticExtension(tmp[0],tmp[1])
+    def to_bytes(self):
+        """Serialise the QuadraticExtensionElement element as its little-endian byte representation. The order is: x0, x1."""
+        return self.x0.to_bytes() + self.x1.to_bytes()
 
     def serialise(self):
-        """
-        Serialise the QuadraticExtension element as list of its little-endian byte representation. The order is: x0, x1
-        """
-        little_endian_x0 = self.x0.serialise()
-        little_endian_x1 = self.x1.serialise()
-
-        out = []
-        out.extend(list(little_endian_x0))
-        out.extend(list(little_endian_x1))
-
-        return out
-    
-    def deserialise(L: list[bytes]):
-        """
-        Reads a sequence of bytes into an element of QuadraticExtension
-        """
-
-        length = (QuadraticExtension.get_modulus().bit_length() + 8)//8
-        assert(len(L) == length * QuadraticExtension.EXTENSION_DEGREE)
-
-        tmp = []
-        index = 0
-        for i in range(2):
-            tmp.append(QuadraticExtension.BASE_FIELD.deserialise(L[index:index+(length*QuadraticExtension.EXTENSION_DEGREE//2)]))
-            index += length * QuadraticExtension.EXTENSION_DEGREE//2
-
-        return QuadraticExtension(tmp[0],tmp[1])
-    
-def quadratic_extension_from_base_field_and_non_residue(base_field, non_residue):
-    """
-    Function to export class QuadraticExtension with BASE_FIELD = base_field and NON_RESIDUE = non_residue
-    """
-
-    class QuadraticExtensionField(QuadraticExtension):
-        NON_RESIDUE = non_residue
-        BASE_FIELD = base_field
-        EXTENSION_DEGREE = 2 * BASE_FIELD.EXTENSION_DEGREE
-        EXTENSION_DEGREE_OVER_BASE_FIELD = 2
-
-        def identity():
-            return QuadraticExtensionField(QuadraticExtensionField.BASE_FIELD.identity(),QuadraticExtensionField.BASE_FIELD.zero())
-
-        def zero():
-            return QuadraticExtensionField(QuadraticExtensionField.BASE_FIELD.zero(),QuadraticExtensionField.BASE_FIELD.zero())
-        
-        def u():
-            return QuadraticExtensionField(QuadraticExtensionField.BASE_FIELD.zero(),QuadraticExtensionField.BASE_FIELD.identity())
-        
-        def generate_random_point():
-            x0 = QuadraticExtensionField.BASE_FIELD.generate_random_point()
-            x1 = QuadraticExtensionField.BASE_FIELD.generate_random_point()
-
-            return QuadraticExtensionField(x0,x1)
-        
-        def get_modulus():
-            """
-            Return the MODULUS (i.e., characteristic) of the field
-            """
-            return QuadraticExtensionField.BASE_FIELD.get_modulus()
-        
-        def from_list(L: list[int]):
-            """
-            Reads a list into an element of QuadraticExtensionField
-            """
-            assert(len(L) == QuadraticExtensionField.EXTENSION_DEGREE)
-
-            tmp = []
-            index = 0
-            for i in range(2):
-                tmp.append(QuadraticExtensionField.BASE_FIELD.from_list(L[index:index+QuadraticExtensionField.EXTENSION_DEGREE//2]))
-                index += QuadraticExtensionField.EXTENSION_DEGREE//2
-            
-            return QuadraticExtensionField(tmp[0],tmp[1])
-        
-        def deserialise(L: list[bytes]):
-            """
-            Reads a sequence of bytes into an element of QuadraticExtensionField
-            """
-
-            length = (QuadraticExtensionField.get_modulus().bit_length() + 8)//8
-            assert(len(L) == length * QuadraticExtensionField.EXTENSION_DEGREE)
-
-            tmp = []
-            index = 0
-            for i in range(2):
-                tmp.append(QuadraticExtensionField.BASE_FIELD.deserialise(L[index:index+(length*QuadraticExtensionField.EXTENSION_DEGREE//2)]))
-                index += length * QuadraticExtensionField.EXTENSION_DEGREE//2
-
-            return QuadraticExtensionField(tmp[0],tmp[1])
-        
-    return QuadraticExtensionField
-
-        
-
-    
+        """Serialise the QuadraticExtensionElement element as the list of bytes of its little-endian representation. The order is: x0, x1."""
+        return list(self.to_bytes())

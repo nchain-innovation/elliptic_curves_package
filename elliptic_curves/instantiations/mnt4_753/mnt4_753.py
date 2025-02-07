@@ -1,74 +1,135 @@
-from elliptic_curves.fields.fq import base_field_from_modulus
-from elliptic_curves.fields.quadratic_extension import quadratic_extension_from_base_field_and_non_residue
+from elliptic_curves.fields.prime_field import PrimeField
+from elliptic_curves.fields.quadratic_extension import QuadraticExtension
 
-from elliptic_curves.models.ec import elliptic_curve_from_curve
-from elliptic_curves.models.curve import Curve, BilinearPairingCurve
+from elliptic_curves.models.ec import (
+    ShortWeierstrassEllipticCurvePoint,
+    ShortWeierstrassEllipticCurve,
+    ShortWeierstrassEllipticCurveWithGenerator,
+)
+from elliptic_curves.models.miller_loop_engine import MillerLoopEngine
+from elliptic_curves.models.types import (
+    G1Point,
+    G2Point,
+    MillerLoopCurve,
+    DenominatorElimination,
+)
+from elliptic_curves.models.pairing_engine import PairingEngine
+from elliptic_curves.models.bilinear_pairings import BilinearPairingCurve
+from elliptic_curves.data_structures.vk import VerifyingKeyGeneric
+from elliptic_curves.data_structures.proof import ProofGeneric
 
-from elliptic_curves.instantiations.mnt4_753.parameters import *
-from elliptic_curves.instantiations.mnt4_753.final_exponentiation import easy_exponentiation, hard_exponentiation
+
+from elliptic_curves.instantiations.mnt4_753.parameters import (
+    a,
+    b,
+    q,
+    r,
+    NON_RESIDUE_FQ,
+    NON_RESIDUE_FQ2,
+    g1_X,
+    g1_Y,
+    g2_X0,
+    g2_X1,
+    g2_Y0,
+    g2_Y1,
+    exp_miller_loop,
+    u,
+    h1,
+    h2,
+)
 
 # Field instantiation
-Fq = base_field_from_modulus(q=q)
+Fq = PrimeField(q)
 NON_RESIDUE_FQ = Fq.from_list(NON_RESIDUE_FQ)
-Fq2 = quadratic_extension_from_base_field_and_non_residue(base_field=Fq,non_residue=NON_RESIDUE_FQ)
+Fq2 = QuadraticExtension(base_field=Fq, non_residue=NON_RESIDUE_FQ)
 NON_RESIDUE_FQ2 = Fq2.from_list(NON_RESIDUE_FQ2)
-Fq4 = quadratic_extension_from_base_field_and_non_residue(base_field=Fq2,non_residue=NON_RESIDUE_FQ2)
-
-# Define mul_by_line_eval method for Fq4
-# We are not customising line_evaluations, so they will be elements in the miller_ouput_type
-def mul_by_line_eval(self,line_eval):
-    return self * line_eval
-
-Fq4.mul_by_line_eval = mul_by_line_eval
+Fq4 = QuadraticExtension(base_field=Fq2, non_residue=NON_RESIDUE_FQ2)
 
 # Scalar field of the curve
-Fr = base_field_from_modulus(q=r)
+Fr = PrimeField(r)
 
 # Curves
-mnt4_753_curve = Curve(a = Fq(a), b = Fq(b))
-mnt4_753_twisted_curve = Curve(a = Fq2(NON_RESIDUE_FQ.scalar_mul(a),Fq.zero()), b = Fq2(Fq.zero(),NON_RESIDUE_FQ.scalar_mul(b)))
+mnt4_753 = ShortWeierstrassEllipticCurve(Fq(a), Fq(b))
+g1_generator = mnt4_753(Fq(g1_X), Fq(g1_Y), False)
+g1_curve = ShortWeierstrassEllipticCurveWithGenerator(
+    Fq(a), Fq(b), g1_generator, h1, Fr
+)
 
-# Curve classes
-MNT4_753, _ = elliptic_curve_from_curve(curve=mnt4_753_curve)
-MNT4_753_Twist, _ = elliptic_curve_from_curve(curve=mnt4_753_twisted_curve)
+mnt4_753_twisted = ShortWeierstrassEllipticCurve(
+    Fq2(NON_RESIDUE_FQ.scalar_mul(a), Fq.zero()),
+    Fq2(Fq.zero(), NON_RESIDUE_FQ.scalar_mul(b)),
+)
+g2_generator = mnt4_753_twisted(
+    Fq2(Fq(g2_X0), Fq(g2_X1)), Fq2(Fq(g2_Y0), Fq(g2_Y1)), False
+)
+g2_curve = ShortWeierstrassEllipticCurveWithGenerator(
+    Fq2(NON_RESIDUE_FQ.scalar_mul(a), Fq.zero()),
+    Fq2(Fq.zero(), NON_RESIDUE_FQ.scalar_mul(b)),
+    g2_generator,
+    h2,
+    Fr,
+)
+
 
 # Twisting morphisms
-def to_twisted_curve(self):
-    '''
+def twisting_morphism(g1_point: G1Point) -> G2Point:
+    """
     The untwisting morphism Psi : E' --> E, (x',y') --> (x'/omega^2, y'/omega^3)
 
     The general equation of a twist is: y^2 = x^3 + a omega^4 x + b omega^6.
 
     The equation of the twist of MNT4_753 is: y^2 = x^3 + a * 13 * x + b * 13 * u, hence omega^4 = 13.
-    
+
     F_q^4 = F_q[u,r] / (r^2 - u, u^2 - 13) => omega = r and the twisting morphism is Phi : E --> E' : (x,y) --> (x * r^2, y * r^3) in E'(F_q^12)
-    '''
+    """
+    assert not g1_point.is_infinity()
+    return ShortWeierstrassEllipticCurvePoint(
+        g2_curve, g1_point.x * Fq4.u().power(2), g1_point.y * Fq4.u().power(3), False
+    )
 
-    return MNT4_753_Twist(self.x * Fq4.u().power(2), self.y * Fq4.u().power(3))
 
-def to_base_curve(self):
-    '''
-    Ref. to_twist() => omega = r
-    '''
+def untwisting_morphism(g2_point: G2Point) -> G1Point:
+    """Ref. to_twist() => omega = r."""
+    assert not g2_point.is_infinity()
+    return ShortWeierstrassEllipticCurvePoint(
+        g1_curve, g2_point.x * Fq4.u().power(-2), g2_point.y * Fq4.u().power(-3), False
+    )
 
-    return MNT4_753(self.x * Fq4.u().power(-2), self.y * Fq4.u().power(-3))
 
-MNT4_753.to_twisted_curve = to_twisted_curve
-MNT4_753_Twist.to_base_curve = to_base_curve
-
-# BilinearPairing
-mnt4_753 = BilinearPairingCurve(
-    q = q,
-    r = r,
-    val_miller_loop=u,
-    exp_miller_loop=exp_miller_loop,
-    h1 = h1,
-    h2 = h2,
-    curve = mnt4_753_curve,
-    twisted_curve = mnt4_753_twisted_curve,
-    g1 = MNT4_753(x = Fq(g1_X), y = Fq(g1_Y)),
-    g2 = MNT4_753_Twist(x = Fq2(Fq(g2_X0),Fq(g2_X1)), y = Fq2(Fq(g2_Y0),Fq(g2_Y1))),
-    miller_output_type=Fq4,
-    easy_exponentiation=easy_exponentiation,
-    hard_exponentiation=hard_exponentiation
+# Engines
+mnt_miller_engine = MillerLoopEngine(
+    g1_curve,
+    g2_curve,
+    twisting_morphism,
+    untwisting_morphism,
+    u,
+    exp_miller_loop,
+    MillerLoopCurve.G2_CURVE,
+    Fq4,
+    DenominatorElimination.QUADRATIC,
 )
+
+
+class Mnt4PairingEngine(PairingEngine):
+    def easy_exponentiation(self, element: QuadraticExtension):
+        """Easy exponentiation for MNT4_753 is f -> f^{q^2-1}."""
+
+        out = element.frobenius(2) * element.invert()
+        return out
+
+    def hard_exponentiation(self, element: QuadraticExtension):
+        """Hard exponentiation for MNT4_753 is f -> f^{q + u + 1}."""
+
+        return element.frobenius(1) * element.power(u) * element
+
+
+mnt_pairing_engine = Mnt4PairingEngine(mnt_miller_engine)
+
+# Bilinear pairing curve
+MNT4_753 = BilinearPairingCurve(g1_curve, g2_curve, mnt_pairing_engine)
+
+# VerifyingKey
+VerifyingKeyMNT4_753 = VerifyingKeyGeneric(MNT4_753)
+
+# Proof
+ProofMNT4_753 = ProofGeneric(MNT4_753)

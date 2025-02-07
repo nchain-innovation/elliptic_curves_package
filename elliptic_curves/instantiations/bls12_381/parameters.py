@@ -4,10 +4,10 @@
 u = -0xD201000000010000
 
 # Signed base two decomposition of u - LSB to MSB
-exp_miller_loop = [-int(bin(abs(u))[i]) for i in range(2,len(bin(abs(u))))][::-1]
+exp_miller_loop = [-int(bin(abs(u))[i]) for i in range(2, len(bin(abs(u))))][::-1]
 
 # Modulus
-q = (u-1)**2 * (u**4 - u**2 + 1) // 3 + u
+q = (u - 1) ** 2 * (u**4 - u**2 + 1) // 3 + u
 
 # r-torsion = q - t + 1
 r = u**4 - u**2 + 1
@@ -17,14 +17,14 @@ a = 0
 b = 4
 
 # Non-residues
-NON_RESIDUE_FQ = [-1]           # List serialisation
-NON_RESIDUE_FQ2 = [1,1]         # List serialisation
-NON_RESIDUE_FQ4 = [0,0,1,0]     # List serialisation
-NON_RESIDUE_FQ6 = [0,0,1,0,0,0] # List serialisation
+NON_RESIDUE_FQ = [-1]  # List serialisation
+NON_RESIDUE_FQ2 = [1, 1]  # List serialisation
+NON_RESIDUE_FQ4 = [0, 0, 1, 0]  # List serialisation
+NON_RESIDUE_FQ6 = [0, 0, 1, 0, 0, 0]  # List serialisation
 
 # Cofactors
-h1 = (u-1)**2 // 3
-h2 = (u**8 - 4*u**7 + 5*u**6 - 4*u**4 + 6*u**3 - 4*u**2 - 4*u + 13) // 9
+h1 = (u - 1) ** 2 // 3
+h2 = (u**8 - 4 * u**7 + 5 * u**6 - 4 * u**4 + 6 * u**3 - 4 * u**2 - 4 * u + 13) // 9
 
 # Generators
 g1_X = 3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507

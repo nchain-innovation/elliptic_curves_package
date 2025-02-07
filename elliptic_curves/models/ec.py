@@ -1,190 +1,69 @@
-from copy import deepcopy
+from typing import Self
 
-# The two classes below are not meant to be directly used by the user. They should be exported using the function below.
-class EllipticCurve:
-    CURVE = None
 
-    def __init__(self, x, y):
-        """
-        Point on elliptic curve specified by curve class
-        """
-        Curve = type(self)
-        assert((x is None and y is None) or Curve.CURVE.evaluate_equation(x,y).is_zero())   # Model point at infinity as (None,None)
+def lexicographic_greatest(element: list[int], other: list[int]) -> bool:
+    """Return `True` is `element` is the lexicographic largest. Else, returns `False`."""
+    is_largest = None
+    for el, ot in zip(element.to_list()[::-1], other.to_list()[::-1]):
+        if el < ot:
+            is_largest = False
+            break
+        if el > ot:
+            is_largest = True
+            break
+    return is_largest
 
-        self.x = x
-        self.y = y
+
+class ShortWeierstrassEllipticCurve:
+    """Short Weierstrass curve in affine form.."""
+
+    def __init__(self, a, b):
+        assert a.is_same_field(b)
+        assert not (
+            a.power(3).scalar_mul(4) - b.power(2).scalar_mul(27)
+        ).is_zero()  # Assert curve is not singular
+
+        self.a = a
+        self.b = b
 
         return
 
-    def __eq__(P,Q):
-        return P.__dict__ == Q.__dict__
+    def __call__(self, x, y, infinity):
+        return ShortWeierstrassEllipticCurvePoint(self, x, y, infinity)
 
-    def __repr__(self):
-        return f'({self.x},{self.y})'
+    def __eq__(element, other):
+        result = True
+        result &= element.a == other.a
+        return result & (element.b == other.b)
 
-    def __neg__(self):
-        if self.is_infinity():
-            out = deepcopy(self)
+    def evaluate_equation(self, x, y):
+        return y.power(2) - x.power(3) - self.a * x - self.b
+
+    def infinity(self):
+        """We model the point at infinity as (None,None)"""
+        return ShortWeierstrassEllipticCurvePoint(
+            self, self.a.field.zero(), self.b.field.zero(), True
+        )
+
+    def from_list(self, coordinates, field) -> list[int]:
+        """Reads a the list of coordinates into a ShortWeierstrassEllipticCurvePoint. First the x-coordinate, then the y-coordinate."""
+        if coordinates == [None, None]:
+            return self.infinity()
         else:
-            out = deepcopy(self)
-            out.y = -out.y
-        
-        return out
+            length = len(coordinates)
+            return ShortWeierstrassEllipticCurvePoint(
+                self,
+                field.from_list(coordinates[: length // 2]),
+                field.from_list(coordinates[length // 2 :]),
+                False,
+            )
 
-    def __add__(P,Q):
-        assert(type(P) == type(Q))
-        Curve = type(P)
+    def deserialise_uncompressed(self, serialised: list[bytes], field):
+        """Deserialise a list of bytes into a ShortWeierstrassEllipticCurvePoint.
 
-        if P.is_infinity():
-            out = deepcopy(Q)
-        elif Q.is_infinity():
-            out = deepcopy(P)
-        else:
-            if P == -Q:
-                out = Curve.point_at_infinity()
-            else:
-                out = deepcopy(P)
+        This function is based on the deserialisation function for the trait SWCurveConfig of arkworks, only uncompressed mode.
+        See [https://github.com/arkworks-rs/algebra/blob/master/ec/src/models/short_weierstrass/mod.rs#L115].
 
-                lambdaCoeff = P.get_lambda(Q)
-                out.x = lambdaCoeff.power(2) - P.x - Q.x
-                out.y = lambdaCoeff * (P.x - out.x) - P.y
-
-        return out
-
-    def __sub__(P,Q):
-        return P + (-Q)
-
-    def get_lambda(self,Q):
-        r"""
-        Compute the gradient of the line through self and Q.
-        If self == Q, return the gradient of the tangent line at P.
-
-        Remark: self and Q must not be the point at infinity.
-        """
-        assert(type(self) == type(Q))
-        Curve = type(self)
-        Field = type(self.x)
-
-        if self == Q:
-            return (self.x.power(2).scalar_mul(3) + Curve.CURVE.a * Field.identity()) * self.y.scalar_mul(2).power(-1)
-        else:
-            return (Q.y - self.y) * (Q.x - self.x).power(-1)
-
-    def get_lambdas(self, expU: list[int]):
-        r"""
-        Computes the lambdas of the multiplication: u * Q, where u = \sum expU[i] * 2**i
-        lambdas[i] is the (list of) lambda(s) computed at the i-th step of the iteration, going down from log(u)-2 to 0:
-        lambdas[0] = lambda(s) computed when i = log(u)-2.
-        If expU[i] != 0, then lambdas[i] is a list where the first element is the lambda for the doubling, and the second is the one for the sum/subtraction.
-        """
-
-        lambdas = []
-
-        if expU[-1] == 1:
-            T = deepcopy(self)
-        elif expU[-1] == -1:
-            T = -deepcopy(self)
-        else:
-            raise ValueError('The most significant element of expE must be non-zero')
-
-        for i in range(len(expU)-2,-1,-1):
-            toAdd = []
-            toAdd.append(T.get_lambda(T))
-            T = T + T
-
-            if expU[i] == 1:
-                toAdd.append(T.get_lambda(self))
-                T = T + self
-            elif expU[i] == -1:
-                toAdd.append(T.get_lambda(-self))
-                T = T - self
-            else:
-                pass
-
-            lambdas.extend([toAdd])
-
-        return lambdas
-
-    def point_at_infinity():
-        r"""
-        We model the point at infinity as (None,None)
-        """
-        return EllipticCurve(x=None,y=None)
-
-    def is_infinity(self) -> bool:
-        return (self.x is None) and (self.y is None)
-
-    def multiply(self, n: int):
-        Curve = type(self)
-
-        if self.is_infinity():
-            result = deepcopy(self)
-        else:
-            if n == 0:
-                result = Curve.point_at_infinity()
-            else:
-                val = deepcopy(self)
-                result = Curve.point_at_infinity()
-
-                if n < 0:
-                    n = -n
-                    val = -val
-                
-                while n > 0:
-                    if n % 2 == 1:
-                        result = result + val
-                    val = val + val
-                    n = n // 2
-
-        return result
-
-    def to_projective(self):
-        Field = type(self.x)
-        
-        if self.is_infinity():
-            return EllipticCurveProjective.point_at_infinity(Field)
-        else:
-            return EllipticCurveProjective(
-                x=deepcopy(self.x),
-                y=deepcopy(self.y),
-                z=Field.identity()
-                )
-
-    def line_evaluation(self,Q,P):
-        r"""
-        Evaluate the line through self and Q at P. If self == Q, the line is the tanget at self. If self == -Q, the line is the vertical
-        
-        The line is y - self.y = lambda * (x - self.x), where lambda = self.getLambda(Q)
-        Remark: self, Q and P must not be the point at infinity.
-        """
-        if self.is_infinity() or Q.is_infinity() or P.is_infinity():
-            raise ValueError("Self, Q and P must not be the point at infinity!")
-        
-        Field_self = type(self.x)
-        Field_Q = type(Q.x)
-        Field_P = type(P.x)
-
-        # Handle the case in which self, Q and P live on the same curve, but with coordinates in different extension fields
-        if Field_self.EXTENSION_DEGREE > max(Field_Q.EXTENSION_DEGREE, Field_P.EXTENSION_DEGREE):
-            Field = Field_self
-        elif Field_Q.EXTENSION_DEGREE > Field_P.EXTENSION_DEGREE:
-            Field = Field_Q
-        else:
-            Field = Field_P
-
-        if self == -Q:
-            out = P.x * Field.identity() - Q.x * Field.identity()
-        else:
-            lam = self.get_lambda(Q) * Field.identity()
-            out = P.y * Field.identity() - self.y * Field.identity() - lam * (P.x  * Field.identity()  - self.x  * Field.identity())
-
-        return out
-    
-    def deserialise(serialised: list[bytes], field):
-        """
-        Function that a list of integers and inteprets it as a point on the elliptic curve self and returns its serialisation.
-        This function is based on the deserialisation function for the trait SWCurveConfig of arkworks, only uncompressed mode. [https://github.com/arkworks-rs/algebra/blob/master/ec/src/models/short_weierstrass/mod.rs#L115]
-        
         It works as follows: serialised is a list of ints representing the little-endian encoding of (x,y). The encoding is:
             [LE(x), LE(y)_mod]
         where both elements are of length equal to the byte length of the field over which the curve is defined, and
@@ -192,132 +71,187 @@ class EllipticCurve:
         where flags is the OR of:
             1 << 7 if y > -y (lexicographic order)
             1 << 6 if Point at infinity
+
+        In uncompressed mode, the flag is disregarded if it's not the infinity flag.
         """
         is_infinity = (serialised[-1] >> 6) & 1
-        is_largest = (serialised[-1] >> 7) & 1
-        
+
         if is_infinity:
-            return EllipticCurve.point_at_infinity()
-        else:        
-            serialised_x = serialised[:len(serialised)//2]
-            x = field.deserialise(serialised_x)
-            serialised_y = serialised[len(serialised)//2:]
-            serialised_y[-1] = serialised_y[-1]  & ~(1 << 7)
+            return self.infinity()
+        else:
+            length = len(serialised)
+            x = field.deserialise(serialised[: length // 2])
+
+            serialised_y = serialised[length // 2 :]
+            serialised_y[-1] = serialised_y[-1] & ~(1 << 7)  # Remove flag
             y = field.deserialise(serialised_y)
 
-            y_is_largest = None
-            for el, minus_el in zip(y.to_list()[::-1],(-y).to_list()[::-1]):
-                if el < minus_el:
-                    y_is_largest = False
-                    break
-                if el > minus_el:
-                    y_is_largest = True
-                    break
-            
-            if (y_is_largest and not is_largest) or (not y_is_largest and is_largest):
-                y = -y
-        
-        return EllipticCurve(x=x,y=y)
+            return ShortWeierstrassEllipticCurvePoint(self, x, y, False)
 
-    def to_list(self) -> list[int]:
-        """
-        Returns the list of coordinates defining self. First the x-coordinate, then the y-coordinate
-        """
-        out = []
-        out.extend(self.x.to_list())
-        out.extend(self.y.to_list())
-        
-        return out
+    def deserialise_unchecked(self, serialised: list[bytes], field):
+        return self.deserialise_uncompressed(serialised, field)
 
-class EllipticCurveProjective:
-    CURVE = None
 
-    def __init__(self, x, y, z):
-        """
-        Projective point on the elliptic curve specified by curve class
-        """
-        Curve = type(self)
-        assert(Curve.CURVE.evaluate_equation(x,y,z).is_zero())
+class ShortWeierstrassEllipticCurveWithGenerator(ShortWeierstrassEllipticCurve):
+    def __init__(self, a, b, generator, cofactor: int, scalar_field):
+        assert a.is_same_field(b)
+        assert not (a.power(3).scalar_mul(4) - b.power(2).scalar_mul(27)).is_zero()
+        assert generator.multiply(scalar_field.get_modulus()).is_infinity()
 
-        self.x = x
-        self.y = y
-        self.z = z
+        self.a = a
+        self.b = b
+        self.generator = generator
+        self.cofactor = cofactor
+        self.scalar_field = scalar_field
 
         return
 
-    def __eq__(P,Q):
-        if P.z.is_zero():
-            if Q.z.is_zero():
-                return True
-            else:
-                return False
-        else:
-            if Q.z.is_zero():
-                return False
-            else:
-                return P.to_affine() == Q.to_affine()
+    def generate_random_point_and_multiplier(self):
+        multiplier = self.scalar_field.generate_random_point().to_int()
+        return self.generator.multiply(multiplier), multiplier
 
-    def __repr__(self):
-        return f'[{self.x} : {self.y} : {self.z}]'
+    def generate_random_point(self):
+        rnd_point, _ = self.generate_random_point_and_multiplier()
+        return rnd_point
 
-    def __neg__(self):
-        out = deepcopy(self)
-        out.y = -out.y
-        return out
+    def get_generator(self):
+        return self.generator
 
-    def __add__(P,Q):
-        assert(type(P) == type(Q))
-        Field = type(P.z)
-        Curve = type(P)
 
-        if P.z.is_zero():
-            return deepcopy(Q)
-        elif Q.z.is_zero():
-            return deepcopy(P)
-        else:
-            sumAff = P.to_affine() + Q.to_affine()
-            if P != Q:
-                denominator = P.z * Q.z * (Q.x - P.x).power(3)                                      # Order chosen to be consistent with affine sum
-            else:
-                denominator = P.z * Q.z * (P.x.scalar_mul(2)).power(3)
+class ShortWeierstrassEllipticCurvePoint:
+    """Point on an affine curve in Short Weierstrass form."""
 
-            if sumAff.is_infinity():                                                                # Points are inverse of one-another
-                out = Curve.point_at_infinity(field=Field)
-            else:
-                out = deepcopy(P)
-                out.x = sumAff.x * denominator
-                out.y = sumAff.y * denominator
-                out.z = denominator
+    def __init__(self, curve, x, y, infinity: bool):
+        assert infinity or curve.evaluate_equation(x, y).is_zero()
 
-            return out
+        self.curve = curve
+        self.x = x
+        self.y = y
+        self.infinity = infinity
 
-    def __sub__(P,Q):
-        return P + (-Q)
-
-    def point_at_infinity(field):
-        return EllipticCurveProjective(field.zero(),field.identity(),field.zero())
+        return
 
     def is_infinity(self) -> bool:
-        return (self.x.is_zero()) and (self.y.x == 1) and (self.z.is_zero())
+        return self.infinity
+
+    def is_same_curve(self, other):
+        return self.curve == other.curve
+
+    def copy_with_same_curve(self):
+        return (
+            self.curve.infinity()
+            if self.is_infinity()
+            else ShortWeierstrassEllipticCurvePoint(
+                self.curve,
+                self.x.copy_with_same_field(),
+                self.y.copy_with_same_field(),
+                False,
+            )
+        )
+
+    def gradient(self, other: Self):
+        """Compute the gradient of the line through `self` and `other`.
+
+        If `self` == `other`, return the gradient of the tangent line at P.
+        """
+        assert self.is_same_curve(other)
+        assert not self.is_infinity()
+        assert not other.is_infinity()
+
+        if self == other:
+            return (self.x.power(2).scalar_mul(3) + self.curve.a) * self.y.scalar_mul(
+                2
+            ).power(-1)
+        else:
+            return (other.y - self.y) * (other.x - self.x).power(-1)
+
+    def __eq__(element, other: Self):
+        result = True
+        result &= element.curve == other.curve
+        result &= element.x == other.x
+        return result & (element.y == other.y)
+
+    def __repr__(self):
+        return f"ShortWeierstrassCurve({self.x},{self.y})"
+
+    def __neg__(self):
+        negated = self.copy_with_same_curve()
+        negated.y = -negated.y
+        return negated
+
+    def __add__(element, other: Self):
+        assert element.is_same_curve(other)
+
+        if element.is_infinity():
+            return other.copy_with_same_curve()
+        elif other.is_infinity():
+            return element.copy_with_same_curve()
+        else:
+            if element == -other:
+                return element.curve.infinity()
+            else:
+                gradient = element.gradient(other)
+                x_coordinate = gradient.power(2) - element.x - other.x
+                y_coordinate = gradient * (element.x - x_coordinate) - element.y
+
+                out = element.curve.infinity()
+                out.x = x_coordinate
+                out.y = y_coordinate
+                out.infinity = False
+                return out
+
+    def __sub__(element, other: Self):
+        return element + (-other)
+
+    def gradients(self, bits: list[int]):
+        r"""
+        Computes the gradients of the multiplication: e * Q, where e = \sum bits[i] * 2**i
+        gradients[i] is the (list of) gradients(s) computed at the i-th step of the iteration, going down from log(e)-2 to 0:
+        gradients[0] = gradient(s) computed when i = log(e)-2.
+        If bits[i] != 0, then gradients[i] is a list where the first element is the gradient for the doubling, and the second is the one for the sum/subtraction.
+        """
+
+        gradients = []
+
+        if bits[-1] == 1:
+            T = self.copy_with_same_curve()
+        elif bits[-1] == -1:
+            T = -self
+        else:
+            raise ValueError("The most significant element of `bits` must be non-zero")
+
+        for i in range(len(bits) - 2, -1, -1):
+            to_add = []
+            to_add.append(T.gradient(T))
+            T = T + T
+
+            if bits[i] == 1:
+                to_add.append(T.gradient(self))
+                T = T + self
+            elif bits[i] == -1:
+                to_add.append(T.gradient(-self))
+                T = T - self
+            else:
+                pass
+
+            gradients.extend([to_add])
+
+        return gradients
 
     def multiply(self, n: int):
-        Curve = type(self)
-        Field = type(self.x)
-
         if self.is_infinity():
-            result = deepcopy(self)
+            return self.copy_with_same_curve()
         else:
-
             if n == 0:
-                result = Curve.point_at_infinity(field=Field)
+                return self.curve.infinity()
             else:
-                val = deepcopy(self)
-                result = Curve.point_at_infinity(field=Field)
+                val = self.copy_with_same_curve()
+                result = self.curve.infinity()
 
                 if n < 0:
                     n = -n
                     val = -val
-                
+
                 while n > 0:
                     if n % 2 == 1:
                         result = result + val
@@ -326,95 +260,43 @@ class EllipticCurveProjective:
 
         return result
 
-    def to_affine(self):
-        if not self.z.is_zero():
-            return EllipticCurve(x=self.x * self.z.invert(),y=self.y * self.z.invert())
+    def line_evaluation(self, Q, P):
+        r"""
+        Evaluate the line through `self` and `Q` at `P`. If `self` == `Q`, the line is the tangent at `self`. If `self` == `-Q`, the line is the vertical.
 
-    def to_list(self) -> list[int]:
+        The line is y - self.y = gradient * (x - self.x), where gradient = self.gradient(Q)
+        Remark: `self`, `Q` and `P` must not be the point at infinity.
         """
-        Returns the list of coordinates defining self. First the x-coordinate, then the y-coordinate, then the z-coordinate
+        assert self.is_same_curve(Q)
+        assert self.is_same_curve(P)
+        assert not self.is_infinity()
+        assert not Q.is_infinity()
+        assert not P.is_infinity()
+
         """
-        out = []
-        out.extend(self.x.to_list())
-        out.extend(self.y.to_list())
-        out.extend(self.z.to_list())
-        
+        # Handle the case in which self, Q and P live on the same curve, but with coordinates in different extension fields
+        if self.field.get_extension_degree_over_prime_field() > max(
+            Q.field.get_extension_degree_over_prime_field(),
+            P.field.get_extension_degree_over_prime_field()
+        ):
+            identity = self.field.identity()
+        elif Q.field.get_extension_degree_over_prime_field() > P.field.get_extension_degree_over_prime_field():
+            identity = Q.field.identity()
+        else:
+            identity = P.field.identity()
+        """
+
+        if self == -Q:
+            return P.x - Q.x
+        else:
+            gradient = self.gradient(Q)
+            out = P.y - self.y - gradient * (P.x - self.x)
+
         return out
 
-def elliptic_curve_from_curve(curve):
-    """
-    Exports EllipticCurve and EllipticCurveProjective for a give curve
-    """
-
-    class AffineEllipticCurve(EllipticCurve):
-        CURVE = curve
-
-        def point_at_infinity():
-            r"""
-            We model the point at infinity as (None,None)
-            """
-            return AffineEllipticCurve(x=None,y=None)
-        
-        def to_projective(self):
-            Field = type(self.x)
-            
-            if self.is_infinity():
-                return ProjectiveEllipticCurve.point_at_infinity(Field)
-            else:
-                return ProjectiveEllipticCurve(
-                    x=deepcopy(self.x),
-                    y=deepcopy(self.y),
-                    z=Field.identity()
-                    )
-        
-        def deserialise(serialised: list[bytes], field):
-            """
-            See comments for function above
-            """
-            is_infinity = (serialised[-1] >> 6) & 1
-            is_largest = (serialised[-1] >> 7) & 1
-            
-            if is_infinity:
-                return AffineEllipticCurve.point_at_infinity()
-            else:        
-                serialised_x = serialised[:len(serialised)//2]
-                x = field.deserialise(serialised_x)
-                serialised_y = serialised[len(serialised)//2:]
-                serialised_y[-1] = serialised_y[-1]  & ~(1 << 7)
-                y = field.deserialise(serialised_y)
-
-                y_is_largest = None
-                for el, minus_el in zip(y.to_list()[::-1],(-y).to_list()[::-1]):
-                    if el < minus_el:
-                        y_is_largest = False
-                        break
-                    if el > minus_el:
-                        y_is_largest = True
-                        break
-                
-                if (y_is_largest and not is_largest) or (not y_is_largest and is_largest):
-                    y = -y
-            
-            return AffineEllipticCurve(x=x,y=y)
-
-    class ProjectiveEllipticCurve(EllipticCurveProjective):
-        CURVE = curve
-        
-        def point_at_infinity(field):
-            return ProjectiveEllipticCurve(field.zero(),field.identity(),field.zero())
-
-        def to_affine(self):
-            if not self.z.is_zero():
-                return AffineEllipticCurve(x=self.x * self.z.invert(),y=self.y * self.z.invert())
-    
-    return AffineEllipticCurve, ProjectiveEllipticCurve
-
-        
-
-
-
-
-
-
-
-
+    def to_list(self) -> list[int]:
+        """Returns the list of coordinates defining self. First the x-coordinate, then the y-coordinate."""
+        if self.is_infinity():
+            return [None, None]
+        else:
+            return [*self.x.to_list(), *self.y.to_list()]
