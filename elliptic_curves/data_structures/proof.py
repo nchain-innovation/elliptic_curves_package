@@ -166,6 +166,9 @@ class ProofGeneric:
     def __init__(self, curve: BilinearPairingCurve):
         self.curve = curve
 
+    def __call__(self, a, b, c):
+        return Proof(self.curve, a, b, c)
+
     def deserialise_unchecked(self, serialised: list[bytes]) -> Proof:
         """Function to deserialise a proof.
 

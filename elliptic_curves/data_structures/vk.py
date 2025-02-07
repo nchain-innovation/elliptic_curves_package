@@ -108,6 +108,9 @@ class VerifyingKeyGeneric:
         self.curve = curve
         return
 
+    def __call__(self, alpha, beta, gamma, delta, gamma_abc):
+        return VerifyingKey(self.curve, alpha, beta, gamma, delta, gamma_abc)
+
     def deserialise(self, serialised: list[bytes]) -> VerifyingKey:
         """Deserialise a verifying key.
 
