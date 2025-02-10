@@ -13,6 +13,7 @@ class BilinearPairingCurve:
         self.g1_field = g1_curve.a.field
         self.g2_curve = g2_curve
         self.g2_field = g2_curve.a.field
+        self.scalar_field = g1_curve.scalar_field
         self.pairing_engine = pairing_engine
         self.miller_loop_engine = pairing_engine.miller_loop_engine
 
@@ -34,4 +35,4 @@ class BilinearPairingCurve:
         return self.g1_curve.a.get_modulus()
 
     def get_order_scalar_field(self):
-        return self.g1_curve.scalar_field.get_modulus()
+        return self.scalar_field.get_modulus()
