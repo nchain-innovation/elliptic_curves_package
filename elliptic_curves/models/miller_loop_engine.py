@@ -15,8 +15,8 @@ class MillerLoopEngine:
         self,
         g1_curve: G1,
         g2_curve: G2,
-        twisting_morphism: Callable[[G1], G2],
-        untwisting_morphism: Callable[[G2], G1],
+        twisting_morphism: Callable[[G1Point], G2Point],
+        untwisting_morphism: Callable[[G2Point], G1Point],
         val_miller_loop: int,
         exp_miller_loop: list[int],
         miller_loop_curve: MillerLoopCurve,
@@ -28,7 +28,7 @@ class MillerLoopEngine:
                 "The most significant element of exp_miller_loop must be non-zero"
             )
 
-        self.g1_curve = g1_curve  # G2
+        self.g1_curve = g1_curve  # G1
         self.g2_curve = g2_curve  # G2
         self.twisting_morphism = twisting_morphism
         self.untwisting_morphism = untwisting_morphism

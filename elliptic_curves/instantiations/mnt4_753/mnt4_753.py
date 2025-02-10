@@ -4,7 +4,6 @@ from elliptic_curves.fields.quadratic_extension import QuadraticExtension
 from elliptic_curves.models.ec import (
     ShortWeierstrassEllipticCurvePoint,
     ShortWeierstrassEllipticCurve,
-    ShortWeierstrassEllipticCurveWithGenerator,
 )
 from elliptic_curves.models.miller_loop_engine import MillerLoopEngine
 from elliptic_curves.models.types import (
@@ -51,9 +50,7 @@ Fr = PrimeField(r)
 # Curves
 mnt4_753 = ShortWeierstrassEllipticCurve(Fq(a), Fq(b))
 g1_generator = mnt4_753(Fq(g1_X), Fq(g1_Y), False)
-g1_curve = ShortWeierstrassEllipticCurveWithGenerator(
-    Fq(a), Fq(b), g1_generator, h1, Fr
-)
+g1_curve = mnt4_753.set_generator(g1_generator, h1, Fr)
 
 mnt4_753_twisted = ShortWeierstrassEllipticCurve(
     Fq2(NON_RESIDUE_FQ.scalar_mul(a), Fq.zero()),
@@ -62,13 +59,7 @@ mnt4_753_twisted = ShortWeierstrassEllipticCurve(
 g2_generator = mnt4_753_twisted(
     Fq2(Fq(g2_X0), Fq(g2_X1)), Fq2(Fq(g2_Y0), Fq(g2_Y1)), False
 )
-g2_curve = ShortWeierstrassEllipticCurveWithGenerator(
-    Fq2(NON_RESIDUE_FQ.scalar_mul(a), Fq.zero()),
-    Fq2(Fq.zero(), NON_RESIDUE_FQ.scalar_mul(b)),
-    g2_generator,
-    h2,
-    Fr,
-)
+g2_curve = mnt4_753_twisted.set_generator(g2_generator, h2, Fr)
 
 
 # Twisting morphisms
@@ -129,7 +120,7 @@ mnt_pairing_engine = Mnt4PairingEngine(mnt_miller_engine)
 MNT4_753 = BilinearPairingCurve(g1_curve, g2_curve, mnt_pairing_engine)
 
 # VerifyingKey
-VerifyingKeyMNT4_753 = VerifyingKeyGeneric(MNT4_753)
+VerifyingKeyMnt4753 = VerifyingKeyGeneric(MNT4_753)
 
 # Proof
-ProofMNT4_753 = ProofGeneric(MNT4_753)
+ProofMnt4753 = ProofGeneric(MNT4_753)

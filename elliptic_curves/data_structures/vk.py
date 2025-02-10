@@ -1,29 +1,9 @@
 from elliptic_curves.models.types import G1Point, G2Point
 from elliptic_curves.models.bilinear_pairings import BilinearPairingCurve
+from elliptic_curves.data_structures.zkscript import ZkScriptVerifyingKey
 
 
 class PreparedVerifyingKey:
-    def __init__(
-        self,
-        vk,
-        curve: BilinearPairingCurve,
-        alpha_beta,
-        minus_gamma,
-        minus_delta,
-        gradients_minus_gamma,
-        gradients_minus_delta,
-    ):
-        self.vk = vk
-        self.curve = curve
-        self.alpha_beta = alpha_beta
-        self.minus_gamma = minus_gamma
-        self.minus_delta = minus_delta
-        self.gradients_minus_gamma = gradients_minus_gamma
-        self.gradients_minus_delta = gradients_minus_delta
-        return
-
-
-class ZkScriptVerifyingKey:
     def __init__(
         self,
         vk,
@@ -83,15 +63,16 @@ class VerifyingKey:
             gradients_minus_delta,
         )
 
-    def prepare_for_zkscript(self) -> ZkScriptVerifyingKey:
-        prepared_vk = self.prepare()
+    def prepare_for_zkscript(
+        self, prepared_vk: PreparedVerifyingKey | None = None
+    ) -> ZkScriptVerifyingKey:
+        prepared_vk = prepared_vk if prepared_vk is not None else self.prepare()
 
         return ZkScriptVerifyingKey(
-            self,
-            self.curve,
             prepared_vk.alpha_beta.to_list(),
             prepared_vk.minus_gamma.to_list(),
             prepared_vk.minus_delta.to_list(),
+            [point.to_list() for point in self.gamma_abc],
             [
                 list(map(lambda s: s.to_list(), gradient))
                 for gradient in prepared_vk.gradients_minus_gamma
@@ -108,7 +89,14 @@ class VerifyingKeyGeneric:
         self.curve = curve
         return
 
-    def __call__(self, alpha, beta, gamma, delta, gamma_abc):
+    def __call__(
+        self,
+        alpha: G1Point,
+        beta: G2Point,
+        gamma: G2Point,
+        delta: G2Point,
+        gamma_abc: list[G1Point],
+    ):
         return VerifyingKey(self.curve, alpha, beta, gamma, delta, gamma_abc)
 
     def deserialise(self, serialised: list[bytes]) -> VerifyingKey:

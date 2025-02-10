@@ -1,13 +1,12 @@
-from elliptic_curves.models.ec import ShortWeierstrassEllipticCurveWithGenerator
 from elliptic_curves.models.pairing_engine import PairingEngine
-from elliptic_curves.models.types import G1Point, G2Point
+from elliptic_curves.models.types import G1Point, G2Point, G1, G2
 
 
 class BilinearPairingCurve:
     def __init__(
         self,
-        g1_curve: ShortWeierstrassEllipticCurveWithGenerator,
-        g2_curve: ShortWeierstrassEllipticCurveWithGenerator,
+        g1_curve: G1,
+        g2_curve: G2,
         pairing_engine: PairingEngine,
     ):
         self.g1_curve = g1_curve

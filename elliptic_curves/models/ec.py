@@ -40,9 +40,18 @@ class ShortWeierstrassEllipticCurve:
         return y.power(2) - x.power(3) - self.a * x - self.b
 
     def infinity(self):
-        """We model the point at infinity as (None,None)"""
+        """Return the point at infinity: (0, 0, True)."""
         return ShortWeierstrassEllipticCurvePoint(
             self, self.a.field.zero(), self.b.field.zero(), True
+        )
+
+    def set_generator(self, generator, cofactor: int, scalar_field):
+        return ShortWeierstrassEllipticCurveWithGenerator(
+            self.a.copy_with_same_field(),
+            self.b.copy_with_same_field(),
+            generator,
+            cofactor,
+            scalar_field,
         )
 
     def from_list(self, coordinates, field) -> list[int]:

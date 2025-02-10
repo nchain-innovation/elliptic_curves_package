@@ -1,34 +1,10 @@
 from elliptic_curves.models.types import G1Point, G2Point
 from elliptic_curves.models.bilinear_pairings import BilinearPairingCurve
 from elliptic_curves.data_structures.vk import PreparedVerifyingKey
+from elliptic_curves.data_structures.zkscript import ZkScriptProof
 
 
 class PreparedProof:
-    def __init__(
-        self,
-        proof,
-        curve: BilinearPairingCurve,
-        public_statements: list[int],
-        gradients_b,
-        gradients_minus_gamma,
-        gradients_minus_delta,
-        inverse_miller_loop,
-        gradients_msm,
-        gradients_public_statements,
-    ):
-        self.proof = proof
-        self.curve = curve
-        self.public_statements = public_statements
-        self.gradients_b = gradients_b
-        self.gradients_minus_gamma = gradients_minus_gamma
-        self.gradients_minus_delta = gradients_minus_delta
-        self.inverse_miller_loop = inverse_miller_loop
-        self.gradients_msm = gradients_msm
-        self.gradients_public_statements = gradients_public_statements
-        return
-
-
-class ZkScriptProof:
     def __init__(
         self,
         proof,
@@ -134,12 +110,40 @@ class Proof:
         )
 
     def prepare_for_zkscript(
-        self, prepared_vk: PreparedVerifyingKey, public_statements: list[int]
+        self,
+        prepared_vk: PreparedVerifyingKey,
+        public_statements: list[int],
+        prepared_proof: PreparedProof | None = None,
     ) -> ZkScriptProof:
-        prepared_proof = self.prepare(prepared_vk, public_statements)
+        prepared_proof = (
+            prepared_proof
+            if prepared_proof is not None
+            else self.prepare(prepared_vk, public_statements)
+        )
+
+        gradients_msm = []
+        for gradient in prepared_proof.gradients_msm:
+            try:
+                gradients_msm.append(gradient.to_list())
+            except Exception as _:
+                gradients_msm.append([])
+
+        gradients_public_statements = []
+        for gradients in prepared_proof.gradients_public_statements:
+            try:
+                gradients_public_statements.append(
+                    [
+                        list(map(lambda s: s.to_list(), gradient))
+                        for gradient in gradients
+                    ]
+                )
+            except Exception as _:
+                gradients_public_statements.append([])
+
         return ZkScriptProof(
-            self,
-            self.curve,
+            self.a.to_list(),
+            self.b.to_list(),
+            self.c.to_list(),
             public_statements,
             [
                 list(map(lambda s: s.to_list(), gradient))
@@ -154,11 +158,8 @@ class Proof:
                 for gradient in prepared_vk.gradients_minus_delta
             ],
             prepared_proof.inverse_miller_loop.to_list(),
-            [gradient.to_list() for gradient in prepared_proof.gradients_msm],
-            [
-                list(map(lambda s: s.to_list(), gradient))
-                for gradient in prepared_proof.gradients_public_statements
-            ],
+            gradients_msm,
+            gradients_public_statements,
         )
 
 

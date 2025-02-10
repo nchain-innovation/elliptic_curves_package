@@ -5,7 +5,6 @@ from elliptic_curves.fields.cubic_extension import CubicExtension
 from elliptic_curves.models.ec import (
     ShortWeierstrassEllipticCurvePoint,
     ShortWeierstrassEllipticCurve,
-    ShortWeierstrassEllipticCurveWithGenerator,
 )
 from elliptic_curves.models.miller_loop_engine import MillerLoopEngine
 from elliptic_curves.models.types import (
@@ -54,17 +53,13 @@ Fr = PrimeField(r)
 # Curves
 bls12_381 = ShortWeierstrassEllipticCurve(Fq(a), Fq(b))
 g1_generator = bls12_381(Fq(g1_X), Fq(g1_Y), False)
-g1_curve = ShortWeierstrassEllipticCurveWithGenerator(
-    Fq(a), Fq(b), g1_generator, h1, Fr
-)
+g1_curve = bls12_381.set_generator(g1_generator, h1, Fr)
 
 bls12_381_twisted = ShortWeierstrassEllipticCurve(Fq2.zero(), Fq(b) * NON_RESIDUE_FQ2)
 g2_generator = bls12_381_twisted(
     Fq2(Fq(g2_X0), Fq(g2_X1)), Fq2(Fq(g2_Y0), Fq(g2_Y1)), False
 )
-g2_curve = ShortWeierstrassEllipticCurveWithGenerator(
-    Fq2.zero(), Fq(b) * NON_RESIDUE_FQ2, g2_generator, h2, Fr
-)
+g2_curve = bls12_381_twisted.set_generator(g2_generator, h2, Fr)
 
 
 # Morphisms
@@ -152,7 +147,7 @@ bls_pairing_engine = Bls12PairingEngine(bls_miller_engine)
 BLS12_381 = BilinearPairingCurve(g1_curve, g2_curve, bls_pairing_engine)
 
 # VerifyingKey
-VerifyingKeyBLS12_381 = VerifyingKeyGeneric(BLS12_381)
+VerifyingKeyBls12381 = VerifyingKeyGeneric(BLS12_381)
 
 # Proof
-ProofBLS12_381 = ProofGeneric(BLS12_381)
+ProofBls12381 = ProofGeneric(BLS12_381)
