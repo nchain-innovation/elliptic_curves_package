@@ -121,19 +121,19 @@ class VerifyingKeyGeneric:
         )
 
         index = 0
-        alpha = self.curve.g1_curve.deserialise_unchecked(
+        alpha = self.curve.g1_curve.deserialise(
             serialised[: index + 2 * length_g1], self.curve.g1_field
         )
         index += 2 * length_g1
-        beta = self.curve.g2_curve.deserialise_unchecked(
+        beta = self.curve.g2_curve.deserialise(
             serialised[index : index + 2 * length_g2], self.curve.g2_field
         )
         index += 2 * length_g2
-        gamma = self.curve.g2_curve.deserialise_unchecked(
+        gamma = self.curve.g2_curve.deserialise(
             serialised[index : index + 2 * length_g2], self.curve.g2_field
         )
         index += 2 * length_g2
-        delta = self.curve.g2_curve.deserialise_unchecked(
+        delta = self.curve.g2_curve.deserialise(
             serialised[index : index + 2 * length_g2], self.curve.g2_field
         )
         index += 2 * length_g2
@@ -147,7 +147,7 @@ class VerifyingKeyGeneric:
         gamma_abc = []
         for _ in range(n_abc):
             gamma_abc.append(
-                self.curve.g1_curve.deserialise_unchecked(
+                self.curve.g1_curve.deserialise(
                     serialised[index : index + 2 * length_g1], self.curve.g1_field
                 )
             )

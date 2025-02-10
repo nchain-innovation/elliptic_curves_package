@@ -716,7 +716,7 @@ def test_deserialisation() -> bool:
         ),
         False,
     )
-    assert point == BLS12_381.g1_curve.deserialise_uncompressed(
+    assert point == BLS12_381.g1_curve.deserialise(
         serialised=serialised_point, field=Fq
     )
 
@@ -818,7 +818,7 @@ def test_deserialisation() -> bool:
         179,
         8,
     ]
-    assert g1 == BLS12_381.g1_curve.deserialise_uncompressed(serialised_g1, Fq)
+    assert g1 == BLS12_381.g1_curve.deserialise(serialised_g1, Fq)
 
     serialised_point = [
         184,
@@ -1033,7 +1033,7 @@ def test_deserialisation() -> bool:
         ),
         infinity=False,
     )
-    assert point == BLS12_381.g2_curve.deserialise_uncompressed(serialised_point, Fq2)
+    assert point == BLS12_381.g2_curve.deserialise(serialised_point, Fq2)
 
     return True
 

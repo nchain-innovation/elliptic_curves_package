@@ -170,10 +170,10 @@ class ProofGeneric:
     def __call__(self, a, b, c):
         return Proof(self.curve, a, b, c)
 
-    def deserialise_unchecked(self, serialised: list[bytes]) -> Proof:
+    def deserialise(self, serialised: list[bytes]) -> Proof:
         """Function to deserialise a proof.
 
-        This function is based on arkworks deserialisation of a proof. [https://github.com/arkworks-rs/groth16/blob/master/src/data_structures.rs#L9]
+        This function is based on arkworks unchecked deserialisation of a proof. [https://github.com/arkworks-rs/groth16/blob/master/src/data_structures.rs#L9]
 
         A proof is formed by: A, B, C, and each element is serialised in turn
             A, C -> elements in G1
@@ -191,15 +191,15 @@ class ProofGeneric:
         )
 
         index = 0
-        a = self.curve.g1_curve.deserialise_unchecked(
+        a = self.curve.g1_curve.deserialise(
             serialised[: index + 2 * length_g1], self.curve.g1_field
         )
         index += 2 * length_g1
-        b = self.curve.g2_curve.deserialise_unchecked(
+        b = self.curve.g2_curve.deserialise(
             serialised[index : index + 2 * length_g2], self.curve.g2_field
         )
         index += 2 * length_g2
-        c = self.curve.g1_curve.deserialise_unchecked(
+        c = self.curve.g1_curve.deserialise(
             serialised[index : index + 2 * length_g1], self.curve.g1_field
         )
 

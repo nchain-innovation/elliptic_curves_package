@@ -1,11 +1,13 @@
 # Elliptic_curves
 
 Python library with implementations of:
-- [Finite fields](./docs/fields.md) (prime fields: `Fq`, quadratic extensions: `QuadraticExtension`, and cubic extensions: `CubicExtension`)
-- [Elliptic curves](./docs/elliptic_curves.md) in Short-Weierstrass form: `EllipticCurve` and `ElliptiCurveProjective`
+- [Finite fields](./docs/fields.md) (prime fields: `PrimeField`, quadratic extensions: `QuadraticExtension`, and cubic extensions: `CubicExtension`)
+- [Elliptic curves](./docs/elliptic_curves.md) in Short-Weierstrass form: `ShortWeierstrassEllipticCurve`
 - [Bilinear pairings](./docs/bilinear_pairings.md): `BilinearPairingCurve`
 
-## Instantiations currenly implemented:
+The structure of the library follows in part that of the [Arkworks](https://github.com/arkworks-rs) library.
+
+## Instantiations currently implemented:
 
 The library currently contains instantiations of the following curves:
 - BLS12_381

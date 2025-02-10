@@ -67,10 +67,10 @@ class ShortWeierstrassEllipticCurve:
                 False,
             )
 
-    def deserialise_uncompressed(self, serialised: list[bytes], field):
+    def deserialise(self, serialised: list[bytes], field):
         """Deserialise a list of bytes into a ShortWeierstrassEllipticCurvePoint.
 
-        This function is based on the deserialisation function for the trait SWCurveConfig of arkworks, only uncompressed mode.
+        This function is based on the unchecked deserialisation function for the trait SWCurveConfig of arkworks.
         See [https://github.com/arkworks-rs/algebra/blob/master/ec/src/models/short_weierstrass/mod.rs#L115].
 
         It works as follows: serialised is a list of ints representing the little-endian encoding of (x,y). The encoding is:
@@ -96,9 +96,6 @@ class ShortWeierstrassEllipticCurve:
             y = field.deserialise(serialised_y)
 
             return ShortWeierstrassEllipticCurvePoint(self, x, y, False)
-
-    def deserialise_unchecked(self, serialised: list[bytes], field):
-        return self.deserialise_uncompressed(serialised, field)
 
 
 class ShortWeierstrassEllipticCurveWithGenerator(ShortWeierstrassEllipticCurve):
