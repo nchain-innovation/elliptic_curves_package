@@ -2,8 +2,22 @@ from elliptic_curves.models.types import G1Point, G2Point
 from elliptic_curves.models.bilinear_pairings import BilinearPairingCurve
 from elliptic_curves.data_structures.zkscript import ZkScriptVerifyingKey
 
+from elliptic_curves.util.zkscript import unrolled_multiplication_gradients
+
 
 class PreparedVerifyingKey:
+    """Prepared verifying key encapsulating the pre-computed data needed to verify a Groth16 proof.
+
+    Args:
+        vk: The verifying key
+        curve (BilinearPairingCurve): The curve over which Groth16 is instantiated.
+        alpha_beta: The value of pairing(vk.alpha, vk.beta).
+        minus_gamma: The value of -vk.gamma.
+        minus_delta: The value of -vk.delta.
+        gradients_minus_gamma: The gradients required to compute minus_gamma * curve.miller_loop_engine.exp_miller_loop
+        gradients_minus_delta: The gradients required to compute minus_delta * curve.miller_loop_engine.exp_miller_loop
+    """
+
     def __init__(
         self,
         vk,
@@ -25,6 +39,8 @@ class PreparedVerifyingKey:
 
 
 class VerifyingKey:
+    """Verifying key encapsulating the data required to verify a Groth16 proof."""
+
     def __init__(
         self,
         curve: BilinearPairingCurve,
@@ -43,14 +59,19 @@ class VerifyingKey:
         return
 
     def prepare(self):
+        """Turn an instance of `Self` into an instance of `PreparedVerifyingKey`."""
         alpha_beta = self.curve.pairing([self.alpha], [self.beta])
         minus_gamma = -self.gamma
         minus_delta = -self.delta
-        gradients_minus_gamma = minus_gamma.gradients(
-            self.curve.miller_loop_engine.exp_miller_loop
+        gradients_minus_gamma = unrolled_multiplication_gradients(
+            self.curve.miller_loop_engine.val_miller_loop,
+            minus_gamma,
+            self.curve.miller_loop_engine.exp_miller_loop,
         )
-        gradients_minus_delta = minus_delta.gradients(
-            self.curve.miller_loop_engine.exp_miller_loop
+        gradients_minus_delta = unrolled_multiplication_gradients(
+            self.curve.miller_loop_engine.val_miller_loop,
+            minus_delta,
+            self.curve.miller_loop_engine.exp_miller_loop,
         )
 
         return PreparedVerifyingKey(
@@ -66,6 +87,7 @@ class VerifyingKey:
     def prepare_for_zkscript(
         self, prepared_vk: PreparedVerifyingKey | None = None
     ) -> ZkScriptVerifyingKey:
+        """Turn an instance of `Self` into an instance of `ZKScriptVerifyingKey`."""
         prepared_vk = prepared_vk if prepared_vk is not None else self.prepare()
 
         return ZkScriptVerifyingKey(
@@ -73,18 +95,14 @@ class VerifyingKey:
             prepared_vk.minus_gamma.to_list(),
             prepared_vk.minus_delta.to_list(),
             [point.to_list() for point in self.gamma_abc],
-            [
-                list(map(lambda s: s.to_list(), gradient))
-                for gradient in prepared_vk.gradients_minus_gamma
-            ],
-            [
-                list(map(lambda s: s.to_list(), gradient))
-                for gradient in prepared_vk.gradients_minus_delta
-            ],
+            prepared_vk.gradients_minus_gamma.as_data(),
+            prepared_vk.gradients_minus_delta.as_data(),
         )
 
 
 class VerifyingKeyGeneric:
+    """Generic verifying key class encapsulating the curve over which Groth16 proof is instantiated."""
+
     def __init__(self, curve: BilinearPairingCurve):
         self.curve = curve
         return

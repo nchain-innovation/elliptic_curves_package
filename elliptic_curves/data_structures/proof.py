@@ -2,9 +2,27 @@ from elliptic_curves.models.types import G1Point, G2Point
 from elliptic_curves.models.bilinear_pairings import BilinearPairingCurve
 from elliptic_curves.data_structures.vk import PreparedVerifyingKey
 from elliptic_curves.data_structures.zkscript import ZkScriptProof
+from elliptic_curves.util.zkscript import (
+    multi_scalar_multiplication_with_fixed_bases_gradients,
+    unrolled_multiplication_gradients,
+)
 
 
 class PreparedProof:
+    """Prepared proof encapsulating the pre-computed data required to prove that a Groth16 proof is valid.
+
+    Args:
+        proof: The proof.
+        curve: The curve over which Groth16 is instantiated.
+        public_statements (list[int]): The public statements for which the proof has been created (w/o the initial 1).
+        gradients_b: The gradients required to compute proof.b * curve.miller_loop_engine.exp_miller_loop.
+        gradients_minus_gamma: The gradients required to compute minus_gamma * curve.miller_loop_engine.exp_miller_loop.
+        gradients_minus_delta: The gradients required to compute minus_delta * curve.miller_loop_engine.exp_miller_loop.
+        inverse_miller_loop: The inverse of miller_loop([proof.a, sum(vk.gamma_abc), proof.c], [proof.b, -vk.gamma, -vk.delta]).
+        msm_key: Instance of MsmWithFixedBasesGradients to compute sum_(i=1)^l public_statement[i-1] * vk.gamma_abc[i].
+        gradient_gamma_abc_zero: The gradient to compute vk.gamma_abc[0] + sum_(i=1)^l public_statement[i-1] * vk.gamma_abc[i].
+    """
+
     def __init__(
         self,
         proof,
@@ -14,8 +32,8 @@ class PreparedProof:
         gradients_minus_gamma,
         gradients_minus_delta,
         inverse_miller_loop,
-        gradients_msm,
-        gradients_public_statements,
+        msm_key,
+        gradient_gamma_abc_zero,
     ):
         self.proof = proof
         self.curve = curve
@@ -24,12 +42,14 @@ class PreparedProof:
         self.gradients_minus_gamma = gradients_minus_gamma
         self.gradients_minus_delta = gradients_minus_delta
         self.inverse_miller_loop = inverse_miller_loop
-        self.gradients_msm = gradients_msm
-        self.gradients_public_statements = gradients_public_statements
+        self.msm_key = msm_key
+        self.gradient_gamma_abc_zero = gradient_gamma_abc_zero
         return
 
 
 class Proof:
+    """Class encapsulating a Groth16 proof."""
+
     def __init__(self, curve: BilinearPairingCurve, a: G1Point, b: G2Point, c: G1Point):
         self.curve = curve
         self.a = a
@@ -39,6 +59,7 @@ class Proof:
     def prepare(
         self, prepared_vk: PreparedVerifyingKey, public_statements: list[int]
     ) -> PreparedProof:
+        """Turn an instance of `Self` into an instance of `PreparedProof`."""
         public_statements_extended = [1, *public_statements]
 
         # Compute \sum_(i=0)^l a_i * gamma_abc[i]
@@ -47,66 +68,46 @@ class Proof:
             len(prepared_vk.vk.gamma_abc) == n_pub + 1
         ), "Wrong number of public inputs"
 
-        sum_gamma_abc = prepared_vk.vk.gamma_abc[0]
-        for i in range(1, n_pub + 1):
+        sum_gamma_abc = prepared_vk.vk.gamma_abc[1].multiply(
+            public_statements_extended[1]
+        )
+        for i in range(2, n_pub + 1):
             sum_gamma_abc += prepared_vk.vk.gamma_abc[i].multiply(
                 public_statements_extended[i]
             )
 
         # Gradients for the pairing
-        gradients_b = self.b.gradients(self.curve.miller_loop_engine.exp_miller_loop)
+        gradients_b = unrolled_multiplication_gradients(
+            self.curve.miller_loop_engine.val_miller_loop,
+            self.b,
+            self.curve.miller_loop_engine.exp_miller_loop,
+        )
 
         # Inverse of the Miller loop output
         inverse_miller_loop = self.curve.miller_loop(
-            [self.a, sum_gamma_abc, self.c],
+            [self.a, sum_gamma_abc + prepared_vk.vk.gamma_abc[0], self.c],
             [self.b, prepared_vk.minus_gamma, prepared_vk.minus_delta],
         ).invert()
 
-        # Compute gradients for partial sums: gradients between a_i * gamma_abc[i] and \sum_(j=0)^(i-1) a_j * gamma_abc[j]
-        gradients_msm = []
-        for i in range(n_pub, 0, -1):
-            sum_gamma_abc -= prepared_vk.vk.gamma_abc[i].multiply(
-                public_statements_extended[i]
-            )
-            if (
-                sum_gamma_abc.is_infinity()
-                or prepared_vk.vk.gamma_abc[i]
-                .multiply(public_statements_extended[i])
-                .is_infinity()
-            ):
-                gradients_msm.append([])
-            else:
-                gradient = sum_gamma_abc.gradient(
-                    prepared_vk.vk.gamma_abc[i].multiply(public_statements_extended[i])
-                )
-                gradients_msm.append(gradient)
+        # Gradient for addition of gamma_abc[0]
+        gradient_gamma_abc_zero = sum_gamma_abc.gradient(prepared_vk.vk.gamma_abc[0])
 
-        # Gradients for multiplications pub[i] * gamma_abc[i]
-        gradients_public_statements = []
-        for i in range(1, n_pub + 1):
-            if public_statements_extended[i] == 0:
-                gradients_public_statements.append([])
-            else:
-                # Binary expansion of pub[i]
-                exp_pub_i = [
-                    int(bin(public_statements_extended[i])[j])
-                    for j in range(2, len(bin(public_statements_extended[i])))
-                ][::-1]
-
-                gradients_public_statements.append(
-                    prepared_vk.vk.gamma_abc[i].gradients(exp_pub_i)
-                )
+        # Gradients for msm
+        msm_key = multi_scalar_multiplication_with_fixed_bases_gradients(
+            public_statements,
+            prepared_vk.vk.gamma_abc[1:],
+        )
 
         return PreparedProof(
             self,
             self.curve,
             public_statements,
             gradients_b,
-            prepared_vk.gradients_minus_delta,
+            prepared_vk.gradients_minus_gamma,
             prepared_vk.gradients_minus_delta,
             inverse_miller_loop,
-            gradients_msm,
-            gradients_public_statements,
+            msm_key,
+            gradient_gamma_abc_zero,
         )
 
     def prepare_for_zkscript(
@@ -115,55 +116,35 @@ class Proof:
         public_statements: list[int],
         prepared_proof: PreparedProof | None = None,
     ) -> ZkScriptProof:
+        """Turn an instance of `Self` into an instance of `ZkScriptProof`."""
         prepared_proof = (
             prepared_proof
             if prepared_proof is not None
             else self.prepare(prepared_vk, public_statements)
         )
 
-        gradients_msm = []
-        for gradient in prepared_proof.gradients_msm:
-            try:
-                gradients_msm.append(gradient.to_list())
-            except Exception as _:
-                gradients_msm.append([])
-
-        gradients_public_statements = []
-        for gradients in prepared_proof.gradients_public_statements:
-            try:
-                gradients_public_statements.append(
-                    [
-                        list(map(lambda s: s.to_list(), gradient))
-                        for gradient in gradients
-                    ]
-                )
-            except Exception as _:
-                gradients_public_statements.append([])
+        gradients_multiplications, gradients_additions = (
+            prepared_proof.msm_key.as_data()
+        )
 
         return ZkScriptProof(
             self.a.to_list(),
             self.b.to_list(),
             self.c.to_list(),
             public_statements,
-            [
-                list(map(lambda s: s.to_list(), gradient))
-                for gradient in prepared_proof.gradients_b
-            ],
-            [
-                list(map(lambda s: s.to_list(), gradient))
-                for gradient in prepared_vk.gradients_minus_gamma
-            ],
-            [
-                list(map(lambda s: s.to_list(), gradient))
-                for gradient in prepared_vk.gradients_minus_delta
-            ],
+            prepared_proof.gradients_b.as_data(),
+            prepared_vk.gradients_minus_gamma.as_data(),
+            prepared_vk.gradients_minus_delta.as_data(),
             prepared_proof.inverse_miller_loop.to_list(),
-            gradients_msm,
-            gradients_public_statements,
+            gradients_multiplications,
+            gradients_additions,
+            prepared_proof.gradient_gamma_abc_zero.to_list(),
         )
 
 
 class ProofGeneric:
+    """Generic proof class encapsulating the curve over which Groth16 proof is instantiated."""
+
     def __init__(self, curve: BilinearPairingCurve):
         self.curve = curve
 
